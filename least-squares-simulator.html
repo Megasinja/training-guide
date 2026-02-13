@@ -5,30 +5,37 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>単回帰（最小二乗法）アニメーション</title>
   <style>
-    :root { --bg:#0b1020; --panel:#111a33; --text:#e7ecff; --muted:#aab4e6; --grid:#223055; --accent:#7aa2ff; --good:#64d38a; --bad:#ff6b6b; }
-    body{ margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans JP", sans-serif; background:var(--bg); color:var(--text); }
-    .wrap{ max-width:1100px; margin:0 auto; padding:18px; display:grid; grid-template-columns: 1.2fr 0.8fr; gap:16px; }
-    .card{ background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01)); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:14px; box-shadow: 0 10px 30px rgba(0,0,0,0.35); }
+    :root { --bg:#0b1020; --panel:#111a33; --text:#e7ecff; --muted:#aab4e6; --grid:#223055; --accent:#7aa2ff; --good:#64d38a; --bad:#ff6b6b; --prev:#ffbf47; }
+    body{ margin:0; font-family:system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans JP", sans-serif; background:var(--bg); color:var(--text); }
+    .wrap{ max-width:1100px; margin:0 auto; padding:18px; display:grid; grid-template-columns:1.2fr 0.8fr; gap:16px; }
+    .card{ background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01)); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:14px; box-shadow:0 10px 30px rgba(0,0,0,0.35); }
     h1{ font-size:18px; margin:0 0 8px; }
     .sub{ color:var(--muted); font-size:13px; line-height:1.5; margin:0 0 12px; }
     canvas{ width:100%; height:auto; border-radius:12px; background:rgba(0,0,0,0.18); border:1px solid rgba(255,255,255,0.06); }
     .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
     button{ cursor:pointer; border:1px solid rgba(255,255,255,0.12); background:rgba(255,255,255,0.06); color:var(--text); padding:8px 10px; border-radius:10px; font-size:13px; }
     button:hover{ background:rgba(255,255,255,0.10); }
-    button.primary{ border-color: rgba(122,162,255,0.45); background: rgba(122,162,255,0.18); }
-    button.primary:hover{ background: rgba(122,162,255,0.26); }
-    .kv{ display:grid; grid-template-columns: 1fr auto; gap:8px 10px; font-size:13px; }
+    button.primary{ border-color:rgba(122,162,255,0.45); background:rgba(122,162,255,0.18); }
+    button.primary:hover{ background:rgba(122,162,255,0.26); }
+    .kv{ display:grid; grid-template-columns:1fr auto; gap:8px 10px; font-size:13px; }
     .kv div:nth-child(odd){ color:var(--muted); }
     .hr{ height:1px; background:rgba(255,255,255,0.10); margin:12px 0; }
-    .slider{ display:grid; grid-template-columns: 90px 1fr 64px; gap:10px; align-items:center; margin:10px 0; font-size:13px; }
+    .slider{ display:grid; grid-template-columns:90px 1fr 68px; gap:10px; align-items:center; margin:10px 0; font-size:13px; }
     input[type="range"]{ width:100%; }
-    .note{ color:var(--muted); font-size:12px; line-height:1.6; }
+    .note{ color:var(--muted); font-size:12px; line-height:1.6; margin:8px 0 0; }
     .pill{ display:inline-block; padding:2px 8px; border-radius:999px; border:1px solid rgba(255,255,255,0.12); background:rgba(255,255,255,0.05); font-size:12px; color:var(--muted); }
     .legend{ display:flex; gap:10px; flex-wrap:wrap; font-size:12px; color:var(--muted); }
     .dot{ width:10px; height:10px; border-radius:50%; display:inline-block; margin-right:6px; vertical-align:middle; }
     .top-nav{ max-width:1100px; margin:14px auto 0; padding:0 18px; }
     .top-link{ color:var(--muted); text-decoration:none; font-size:13px; }
     .top-link:hover{ color:var(--text); text-decoration:underline; }
+    .proc{ display:grid; gap:6px; margin-top:8px; }
+    .proc-item{ font-size:12px; color:var(--muted); border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.02); border-radius:8px; padding:6px 8px; }
+    .proc-item.active{ color:var(--text); border-color:rgba(122,162,255,0.45); background:rgba(122,162,255,0.14); }
+
+    @media (max-width:980px){
+      .wrap{ grid-template-columns:1fr; }
+    }
   </style>
 </head>
 <body>
@@ -47,6 +54,7 @@
         <span><span class="dot" style="background:var(--accent)"></span>データ点</span>
         <span><span class="dot" style="background:var(--good)"></span>最小二乗解の回帰直線</span>
         <span><span class="dot" style="background:rgba(255,107,107,0.9)"></span>現在の回帰直線</span>
+        <span><span class="dot" style="background:var(--prev)"></span>1つ前の回帰直線</span>
         <span><span class="dot" style="background:rgba(255,255,255,0.55)"></span>残差（縦距離）</span>
       </div>
     </div>
@@ -54,12 +62,13 @@
     <div class="card">
       <div class="row" style="justify-content:space-between;">
         <div style="font-weight:600; font-size:14px;">操作パネル</div>
-        <div class="pill" id="modePill">モード: 自動</div>
+        <div class="pill" id="modePill">モード: 自動更新中</div>
       </div>
 
       <div class="row" style="margin-top:10px;">
         <button class="primary" id="btnPlay">再生</button>
         <button id="btnPause">停止</button>
+        <button id="btnStep">1コマ進む</button>
         <button id="btnReset">リセット</button>
         <button id="btnNew">データ再生成</button>
       </div>
@@ -79,9 +88,9 @@
       </div>
 
       <div class="slider">
-        <div>速度</div>
-        <input id="spdRange" type="range" min="0.2" max="3.0" step="0.05" value="1.2" />
-        <div id="spdVal">1.20</div>
+        <div>再生速度</div>
+        <input id="spdRange" type="range" min="0.30" max="1.50" step="0.05" value="0.60" />
+        <div id="spdVal">0.60x</div>
       </div>
 
       <div class="hr"></div>
@@ -95,9 +104,30 @@
 
       <div class="hr"></div>
 
+      <div class="row" style="justify-content:space-between;">
+        <div style="font-weight:600; font-size:13px;">損失関数を小さくする手順</div>
+        <div class="pill" id="phasePill">手順: 待機中</div>
+      </div>
+
+      <div class="proc" id="proc">
+        <div class="proc-item">1. 現在の SSE を計算</div>
+        <div class="proc-item">2. 勾配 (∂SSE/∂a, ∂SSE/∂b) を計算</div>
+        <div class="proc-item">3. a,b を負の勾配方向へ更新</div>
+        <div class="proc-item">4. 更新後の SSE が下がったか確認</div>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="kv" id="stepInfo">
+        <div>更新回数</div><div id="stepCount">0</div>
+        <div>勾配 (∂a, ∂b)</div><div id="gradVal">-</div>
+        <div>更新式</div><div id="updateEq">-</div>
+        <div>ΔSSE (更新後-更新前)</div><div id="deltaSSE">-</div>
+      </div>
+
       <p class="note">
-        自動モードは「SSEが下がる方向に (a,b) を少しずつ更新」する簡易の最適化デモです（厳密な証明ではなく直感用）。
-        授業・資料では、別途 正規方程式や平均・共分散の式展開と併用してください。
+        自動モードは離散ステップで最適化します。停止時に <span class="pill">1コマ進む</span> を押すと、
+        勾配計算と更新の1サイクルだけ進みます。
       </p>
     </div>
   </div>
@@ -111,131 +141,333 @@
     return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
   }
 
-  function genData(n=18) {
-    const aT = (Math.random()*2 - 1) * 1.5;
-    const bT = (Math.random()*2 - 1) * 1.2 + 0.6;
+  function genData(n = 18) {
+    const aT = (Math.random() * 2 - 1) * 1.5;
+    const bT = (Math.random() * 2 - 1) * 1.2 + 0.6;
     const xs = [], ys = [];
-    for (let i=0; i<n; i++) {
-      const x = -4 + 8*(i/(n-1)) + randn()*0.15;
-      const y = aT + bT*x + randn()*0.9;
-      xs.push(x); ys.push(y);
+    for (let i = 0; i < n; i++) {
+      const x = -4 + 8 * (i / (n - 1)) + randn() * 0.15;
+      const y = aT + bT * x + randn() * 0.9;
+      xs.push(x);
+      ys.push(y);
     }
-    return {xs, ys};
+    return { xs, ys };
   }
 
-  function mean(arr){ return arr.reduce((s,v)=>s+v,0)/arr.length; }
+  function mean(arr) {
+    return arr.reduce((s, v) => s + v, 0) / arr.length;
+  }
 
-  function olsFit(xs, ys){
+  function olsFit(xs, ys) {
     const xbar = mean(xs), ybar = mean(ys);
-    let sxx=0, sxy=0;
-    for (let i=0;i<xs.length;i++){
-      const dx = xs[i]-xbar;
-      sxx += dx*dx;
-      sxy += dx*(ys[i]-ybar);
+    let sxx = 0, sxy = 0;
+    for (let i = 0; i < xs.length; i++) {
+      const dx = xs[i] - xbar;
+      sxx += dx * dx;
+      sxy += dx * (ys[i] - ybar);
     }
-    const b = sxy/sxx;
-    const a = ybar - b*xbar;
-    return {a,b};
+    const b = sxy / sxx;
+    const a = ybar - b * xbar;
+    return { a, b };
   }
 
-  function sse(xs, ys, a, b){
-    let S=0;
-    for (let i=0;i<xs.length;i++){
-      const e = ys[i]-(a+b*xs[i]);
-      S+=e*e;
+  function sse(xs, ys, a, b) {
+    let S = 0;
+    for (let i = 0; i < xs.length; i++) {
+      const e = ys[i] - (a + b * xs[i]);
+      S += e * e;
     }
     return S;
   }
 
-  const canvas=document.getElementById('plot');
-  const ctx=canvas.getContext('2d');
+  function gradients(xs, ys, a, b) {
+    let da = 0;
+    let db = 0;
+    for (let i = 0; i < xs.length; i++) {
+      const e = ys[i] - (a + b * xs[i]);
+      da += -2 * e;
+      db += -2 * xs[i] * e;
+    }
+    return { da, db };
+  }
 
-  let data=genData();
-  let best=olsFit(data.xs,data.ys);
-  let bestSSE=sse(data.xs,data.ys,best.a,best.b);
+  function clamp(v, lo, hi) {
+    return Math.min(hi, Math.max(lo, v));
+  }
 
-  let a=0, b=0.5;
-  let running=true;
-  let lastT=performance.now();
+  function easeOutCubic(t) {
+    return 1 - Math.pow(1 - t, 3);
+  }
 
-  const aRange=document.getElementById('aRange');
-  const bRange=document.getElementById('bRange');
-  const spdRange=document.getElementById('spdRange');
+  const canvas = document.getElementById('plot');
+  const ctx = canvas.getContext('2d');
 
-  function draw(){
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    const pad=60;
-    const xs=data.xs, ys=data.ys;
-    const xmin=Math.min(...xs)-1, xmax=Math.max(...xs)+1;
-    const ymin=Math.min(...ys)-1, ymax=Math.max(...ys)+1;
-    const x2px=x=>pad+(x-xmin)*(canvas.width-2*pad)/(xmax-xmin);
-    const y2py=y=>canvas.height-pad-(y-ymin)*(canvas.height-2*pad)/(ymax-ymin);
+  const aRange = document.getElementById('aRange');
+  const bRange = document.getElementById('bRange');
+  const spdRange = document.getElementById('spdRange');
+  const modePill = document.getElementById('modePill');
+  const phasePill = document.getElementById('phasePill');
+  const procItems = Array.from(document.querySelectorAll('#proc .proc-item'));
 
-    ctx.strokeStyle="#444";
-    ctx.strokeRect(pad,pad,canvas.width-2*pad,canvas.height-2*pad);
+  const aMin = parseFloat(aRange.min);
+  const aMax = parseFloat(aRange.max);
+  const bMin = parseFloat(bRange.min);
+  const bMax = parseFloat(bRange.max);
 
-    ctx.strokeStyle="green"; ctx.lineWidth=3;
+  const baseIntervalMs = 1050;
+  const baseLearningRate = 0.00125;
+  const procedureMs = 1200;
+
+  let data = genData();
+  let best = olsFit(data.xs, data.ys);
+  let bestSSE = sse(data.xs, data.ys, best.a, best.b);
+
+  let a = 0;
+  let b = 0.5;
+  let running = true;
+  let lastT = performance.now();
+  let accMs = 0;
+  let stepCount = 0;
+
+  let moveAnim = null;
+  let lastUpdate = null;
+
+  function getSpeed() {
+    return parseFloat(spdRange.value);
+  }
+
+  function getIntervalMs() {
+    return baseIntervalMs / getSpeed();
+  }
+
+  function getAnimMs() {
+    return Math.min(900, getIntervalMs() * 0.7);
+  }
+
+  function runOneOptimizationStep(source) {
+    const oldA = a;
+    const oldB = b;
+    const oldSSE = sse(data.xs, data.ys, oldA, oldB);
+
+    const grad = gradients(data.xs, data.ys, oldA, oldB);
+
+    const nextA = clamp(oldA - baseLearningRate * grad.da, aMin, aMax);
+    const nextB = clamp(oldB - baseLearningRate * grad.db, bMin, bMax);
+    const nextSSE = sse(data.xs, data.ys, nextA, nextB);
+
+    a = nextA;
+    b = nextB;
+    aRange.value = a;
+    bRange.value = b;
+
+    stepCount += 1;
+    const now = performance.now();
+    moveAnim = {
+      fromA: oldA,
+      fromB: oldB,
+      toA: nextA,
+      toB: nextB,
+      start: now,
+      duration: getAnimMs()
+    };
+    lastUpdate = {
+      source,
+      oldA,
+      oldB,
+      oldSSE,
+      da: grad.da,
+      db: grad.db,
+      lr: baseLearningRate,
+      nextA,
+      nextB,
+      nextSSE,
+      deltaSSE: nextSSE - oldSSE,
+      start: now
+    };
+  }
+
+  function getDisplayParams(now) {
+    if (!moveAnim) {
+      return { drawA: a, drawB: b };
+    }
+    const p = Math.min(1, (now - moveAnim.start) / moveAnim.duration);
+    const e = easeOutCubic(p);
+    const drawA = moveAnim.fromA + (moveAnim.toA - moveAnim.fromA) * e;
+    const drawB = moveAnim.fromB + (moveAnim.toB - moveAnim.fromB) * e;
+    if (p >= 1) {
+      moveAnim = null;
+    }
+    return { drawA, drawB };
+  }
+
+  function updateProcedure(now) {
+    if (!lastUpdate) {
+      phasePill.textContent = '手順: 待機中';
+      for (const item of procItems) {
+        item.classList.remove('active');
+      }
+      return;
+    }
+
+    const phaseLabels = [
+      '手順: 1/4 SSEを計算中',
+      '手順: 2/4 勾配を計算中',
+      '手順: 3/4 パラメータ更新中',
+      '手順: 4/4 改善確認中'
+    ];
+    const elapsed = now - lastUpdate.start;
+    const phase = Math.min(3, Math.floor(elapsed / (procedureMs / 4)));
+
+    phasePill.textContent = phaseLabels[phase];
+    for (let i = 0; i < procItems.length; i++) {
+      procItems[i].classList.toggle('active', i === phase);
+    }
+  }
+
+  function draw(now) {
+    const { drawA, drawB } = getDisplayParams(now);
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const pad = 60;
+    const xs = data.xs;
+    const ys = data.ys;
+    const xmin = Math.min(...xs) - 1;
+    const xmax = Math.max(...xs) + 1;
+    const ymin = Math.min(...ys) - 1;
+    const ymax = Math.max(...ys) + 1;
+    const x2px = x => pad + (x - xmin) * (canvas.width - 2 * pad) / (xmax - xmin);
+    const y2py = y => canvas.height - pad - (y - ymin) * (canvas.height - 2 * pad) / (ymax - ymin);
+
+    ctx.strokeStyle = '#444';
+    ctx.strokeRect(pad, pad, canvas.width - 2 * pad, canvas.height - 2 * pad);
+
+    ctx.strokeStyle = 'rgba(100,211,138,0.95)';
+    ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.moveTo(x2px(xmin),y2py(best.a+best.b*xmin));
-    ctx.lineTo(x2px(xmax),y2py(best.a+best.b*xmax));
+    ctx.moveTo(x2px(xmin), y2py(best.a + best.b * xmin));
+    ctx.lineTo(x2px(xmax), y2py(best.a + best.b * xmax));
     ctx.stroke();
 
-    ctx.strokeStyle="red"; ctx.lineWidth=2;
-    ctx.beginPath();
-    ctx.moveTo(x2px(xmin),y2py(a+b*xmin));
-    ctx.lineTo(x2px(xmax),y2py(a+b*xmax));
-    ctx.stroke();
-
-    for(let i=0;i<xs.length;i++){
-      ctx.fillStyle="#7aa2ff";
+    if (lastUpdate && now - lastUpdate.start < 2400) {
+      ctx.setLineDash([8, 5]);
+      ctx.strokeStyle = 'rgba(255,191,71,0.95)';
+      ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.arc(x2px(xs[i]),y2py(ys[i]),4,0,Math.PI*2);
+      ctx.moveTo(x2px(xmin), y2py(lastUpdate.oldA + lastUpdate.oldB * xmin));
+      ctx.lineTo(x2px(xmax), y2py(lastUpdate.oldA + lastUpdate.oldB * xmax));
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    ctx.strokeStyle = 'rgba(255,107,107,0.95)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x2px(xmin), y2py(drawA + drawB * xmin));
+    ctx.lineTo(x2px(xmax), y2py(drawA + drawB * xmax));
+    ctx.stroke();
+
+    for (let i = 0; i < xs.length; i++) {
+      ctx.fillStyle = '#7aa2ff';
+      ctx.beginPath();
+      ctx.arc(x2px(xs[i]), y2py(ys[i]), 4, 0, Math.PI * 2);
       ctx.fill();
 
-      ctx.strokeStyle="white";
+      ctx.strokeStyle = 'rgba(255,255,255,0.72)';
+      ctx.lineWidth = 1.2;
       ctx.beginPath();
-      ctx.moveTo(x2px(xs[i]),y2py(ys[i]));
-      ctx.lineTo(x2px(xs[i]),y2py(a+b*xs[i]));
+      ctx.moveTo(x2px(xs[i]), y2py(ys[i]));
+      ctx.lineTo(x2px(xs[i]), y2py(drawA + drawB * xs[i]));
       ctx.stroke();
     }
-    
-    // Update stats
+
+    const currentSSE = sse(data.xs, data.ys, a, b);
+
     document.getElementById('aVal').textContent = a.toFixed(2);
     document.getElementById('bVal').textContent = b.toFixed(2);
-    const currentSSE = sse(data.xs, data.ys, a, b);
+    document.getElementById('spdVal').textContent = `${getSpeed().toFixed(2)}x`;
+
     document.getElementById('sseNow').textContent = currentSSE.toFixed(4);
     document.getElementById('sseBest').textContent = bestSSE.toFixed(4);
     document.getElementById('abNow').textContent = `a=${a.toFixed(3)}, b=${b.toFixed(3)}`;
     document.getElementById('abBest').textContent = `a*=${best.a.toFixed(3)}, b*=${best.b.toFixed(3)}`;
-    document.getElementById('modePill').textContent = running ? "モード: 自動更新中" : "モード: 停止中";
+
+    document.getElementById('stepCount').textContent = `${stepCount}`;
+
+    if (!lastUpdate) {
+      document.getElementById('gradVal').textContent = '-';
+      document.getElementById('updateEq').textContent = '-';
+      document.getElementById('deltaSSE').textContent = '-';
+    } else {
+      document.getElementById('gradVal').textContent = `${lastUpdate.da.toFixed(3)}, ${lastUpdate.db.toFixed(3)}`;
+      document.getElementById('updateEq').textContent = `a<-${lastUpdate.oldA.toFixed(3)}-${lastUpdate.lr.toFixed(4)}*(${lastUpdate.da.toFixed(3)}), b<-${lastUpdate.oldB.toFixed(3)}-${lastUpdate.lr.toFixed(4)}*(${lastUpdate.db.toFixed(3)})`;
+      const deltaEl = document.getElementById('deltaSSE');
+      deltaEl.textContent = `${lastUpdate.deltaSSE.toFixed(4)} (${lastUpdate.source === 'manual' ? '手動' : '自動'})`;
+      deltaEl.style.color = lastUpdate.deltaSSE <= 0 ? 'var(--good)' : 'var(--bad)';
+    }
+
+    modePill.textContent = running ? 'モード: 自動更新中' : 'モード: 停止中（1コマ可）';
+    updateProcedure(now);
   }
 
-  function step(t){
-    const dt=(t-lastT)/1000; lastT=t;
-    if(running){
-      const eps=1e-4;
-      const base=sse(data.xs,data.ys,a,b);
-      const da=(sse(data.xs,data.ys,a+eps,b)-base)/eps;
-      const db=(sse(data.xs,data.ys,a,b+eps)-base)/eps;
-      const lr=0.02*parseFloat(spdRange.value);
-      a-=lr*da*dt*10; // 少し感度を調整
-      b-=lr*db*dt*10;
-      aRange.value=a; bRange.value=b;
+  function step(now) {
+    const dt = now - lastT;
+    lastT = now;
+
+    if (running) {
+      accMs += dt;
+      const interval = getIntervalMs();
+      while (accMs >= interval) {
+        runOneOptimizationStep('auto');
+        accMs -= interval;
+      }
+    } else {
+      accMs = 0;
     }
-    a=parseFloat(aRange.value);
-    b=parseFloat(bRange.value);
-    draw();
+
+    draw(now);
     requestAnimationFrame(step);
   }
 
-  document.getElementById('btnPlay').onclick=()=>running=true;
-  document.getElementById('btnPause').onclick=()=>running=false;
-  document.getElementById('btnReset').onclick=()=>{a=0;b=0.5;aRange.value=a;bRange.value=b;};
-  document.getElementById('btnNew').onclick=()=>{
-    data=genData();
-    best=olsFit(data.xs,data.ys);
-    bestSSE=sse(data.xs,data.ys,best.a,best.b);
+  function syncFromSlider() {
+    a = parseFloat(aRange.value);
+    b = parseFloat(bRange.value);
+    moveAnim = null;
+  }
+
+  document.getElementById('btnPlay').onclick = () => { running = true; };
+  document.getElementById('btnPause').onclick = () => { running = false; };
+  document.getElementById('btnStep').onclick = () => {
+    running = false;
+    runOneOptimizationStep('manual');
   };
+  document.getElementById('btnReset').onclick = () => {
+    running = false;
+    a = 0;
+    b = 0.5;
+    aRange.value = a;
+    bRange.value = b;
+    accMs = 0;
+    stepCount = 0;
+    moveAnim = null;
+    lastUpdate = null;
+  };
+  document.getElementById('btnNew').onclick = () => {
+    data = genData();
+    best = olsFit(data.xs, data.ys);
+    bestSSE = sse(data.xs, data.ys, best.a, best.b);
+    running = false;
+    a = 0;
+    b = 0.5;
+    aRange.value = a;
+    bRange.value = b;
+    accMs = 0;
+    stepCount = 0;
+    moveAnim = null;
+    lastUpdate = null;
+  };
+
+  aRange.addEventListener('input', syncFromSlider);
+  bRange.addEventListener('input', syncFromSlider);
 
   requestAnimationFrame(step);
 })();
