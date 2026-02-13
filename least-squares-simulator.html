@@ -456,6 +456,7 @@
       document.getElementById('detailCheck').innerHTML = '<code>-</code>';
     } else {
       document.getElementById('detailUpdate').innerHTML =
+        `<div><code>定義式: <span class="c-a">a</span> ← <span class="c-a">a</span> - η(∂SSE/∂a), <span class="c-b">b</span> ← <span class="c-b">b</span> - η(∂SSE/∂b)</code></div>` +
         `<div><code><span class="c-a">a</span> ← ${lastUpdate.oldA.toFixed(4)} - ${lastUpdate.lr.toFixed(4)}*(${lastUpdate.da.toFixed(4)}) = <span class="c-a">${lastUpdate.nextA.toFixed(4)}</span></code></div>` +
         `<div><code><span class="c-b">b</span> ← ${lastUpdate.oldB.toFixed(4)} - ${lastUpdate.lr.toFixed(4)}*(${lastUpdate.db.toFixed(4)}) = <span class="c-b">${lastUpdate.nextB.toFixed(4)}</span></code></div>`;
 
