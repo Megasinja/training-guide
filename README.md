@@ -31,5 +31,6 @@ AI新人研修用
 
 ## 📝 コンテンツ
 
-- `index.html` - メインのランディングページ
+- `index.html` - 新卒AI研修のスタートページ
+- `least-squares-simulator.html` - 単回帰分析（最小二乗法）シミュレータ
 - `README.md` - このファイル

@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>単回帰（最小二乗法）アニメーション</title>
+  <style>
+    :root { --bg:#0b1020; --panel:#111a33; --text:#e7ecff; --muted:#aab4e6; --grid:#223055; --accent:#7aa2ff; --good:#64d38a; --bad:#ff6b6b; }
+    body{ margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans JP", sans-serif; background:var(--bg); color:var(--text); }
+    .wrap{ max-width:1100px; margin:0 auto; padding:18px; display:grid; grid-template-columns: 1.2fr 0.8fr; gap:16px; }
+    .card{ background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01)); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:14px; box-shadow: 0 10px 30px rgba(0,0,0,0.35); }
+    h1{ font-size:18px; margin:0 0 8px; }
+    .sub{ color:var(--muted); font-size:13px; line-height:1.5; margin:0 0 12px; }
+    canvas{ width:100%; height:auto; border-radius:12px; background:rgba(0,0,0,0.18); border:1px solid rgba(255,255,255,0.06); }
+    .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    button{ cursor:pointer; border:1px solid rgba(255,255,255,0.12); background:rgba(255,255,255,0.06); color:var(--text); padding:8px 10px; border-radius:10px; font-size:13px; }
+    button:hover{ background:rgba(255,255,255,0.10); }
+    button.primary{ border-color: rgba(122,162,255,0.45); background: rgba(122,162,255,0.18); }
+    button.primary:hover{ background: rgba(122,162,255,0.26); }
+    .kv{ display:grid; grid-template-columns: 1fr auto; gap:8px 10px; font-size:13px; }
+    .kv div:nth-child(odd){ color:var(--muted); }
+    .hr{ height:1px; background:rgba(255,255,255,0.10); margin:12px 0; }
+    .slider{ display:grid; grid-template-columns: 90px 1fr 64px; gap:10px; align-items:center; margin:10px 0; font-size:13px; }
+    input[type="range"]{ width:100%; }
+    .note{ color:var(--muted); font-size:12px; line-height:1.6; }
+    .pill{ display:inline-block; padding:2px 8px; border-radius:999px; border:1px solid rgba(255,255,255,0.12); background:rgba(255,255,255,0.05); font-size:12px; color:var(--muted); }
+    .legend{ display:flex; gap:10px; flex-wrap:wrap; font-size:12px; color:var(--muted); }
+    .dot{ width:10px; height:10px; border-radius:50%; display:inline-block; margin-right:6px; vertical-align:middle; }
+    .top-nav{ max-width:1100px; margin:14px auto 0; padding:0 18px; }
+    .top-link{ color:var(--muted); text-decoration:none; font-size:13px; }
+    .top-link:hover{ color:var(--text); text-decoration:underline; }
+  </style>
+</head>
+<body>
+  <div class="top-nav">
+    <a class="top-link" href="index.html">← 新卒AI研修トップへ戻る</a>
+  </div>
+  <div class="wrap">
+    <div class="card">
+      <h1>単回帰分析：最小二乗法（OLS）の直感的アニメーション</h1>
+      <p class="sub">
+        回帰直線 <span class="pill">ŷ = a + b x</span> を動かすと、各点の残差 <span class="pill">eᵢ = yᵢ − ŷᵢ</span> が変わります。
+        最小二乗法は <span class="pill">SSE = Σ eᵢ²</span> を最小にする (a,b) を選びます。
+      </p>
+      <canvas id="plot" width="820" height="520"></canvas>
+      <div class="legend" style="margin-top:10px;">
+        <span><span class="dot" style="background:var(--accent)"></span>データ点</span>
+        <span><span class="dot" style="background:var(--good)"></span>最小二乗解の回帰直線</span>
+        <span><span class="dot" style="background:rgba(255,107,107,0.9)"></span>現在の回帰直線</span>
+        <span><span class="dot" style="background:rgba(255,255,255,0.55)"></span>残差（縦距離）</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="row" style="justify-content:space-between;">
+        <div style="font-weight:600; font-size:14px;">操作パネル</div>
+        <div class="pill" id="modePill">モード: 自動</div>
+      </div>
+
+      <div class="row" style="margin-top:10px;">
+        <button class="primary" id="btnPlay">再生</button>
+        <button id="btnPause">停止</button>
+        <button id="btnReset">リセット</button>
+        <button id="btnNew">データ再生成</button>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="slider">
+        <div>切片 a</div>
+        <input id="aRange" type="range" min="-6" max="6" step="0.01" value="0" />
+        <div id="aVal">0.00</div>
+      </div>
+
+      <div class="slider">
+        <div>傾き b</div>
+        <input id="bRange" type="range" min="-3" max="3" step="0.01" value="0.5" />
+        <div id="bVal">0.50</div>
+      </div>
+
+      <div class="slider">
+        <div>速度</div>
+        <input id="spdRange" type="range" min="0.2" max="3.0" step="0.05" value="1.2" />
+        <div id="spdVal">1.20</div>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="kv" id="stats">
+        <div>現在の SSE</div><div id="sseNow">-</div>
+        <div>最小値 SSE*</div><div id="sseBest">-</div>
+        <div>現在 (a,b)</div><div id="abNow">-</div>
+        <div>最小二乗解 (a*,b*)</div><div id="abBest">-</div>
+      </div>
+
+      <div class="hr"></div>
+
+      <p class="note">
+        自動モードは「SSEが下がる方向に (a,b) を少しずつ更新」する簡易の最適化デモです（厳密な証明ではなく直感用）。
+        授業・資料では、別途 正規方程式や平均・共分散の式展開と併用してください。
+      </p>
+    </div>
+  </div>
+
+<script>
+(() => {
+  function randn() {
+    let u = 0, v = 0;
+    while (u === 0) u = Math.random();
+    while (v === 0) v = Math.random();
+    return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+  }
+
+  function genData(n=18) {
+    const aT = (Math.random()*2 - 1) * 1.5;
+    const bT = (Math.random()*2 - 1) * 1.2 + 0.6;
+    const xs = [], ys = [];
+    for (let i=0; i<n; i++) {
+      const x = -4 + 8*(i/(n-1)) + randn()*0.15;
+      const y = aT + bT*x + randn()*0.9;
+      xs.push(x); ys.push(y);
+    }
+    return {xs, ys};
+  }
+
+  function mean(arr){ return arr.reduce((s,v)=>s+v,0)/arr.length; }
+
+  function olsFit(xs, ys){
+    const xbar = mean(xs), ybar = mean(ys);
+    let sxx=0, sxy=0;
+    for (let i=0;i<xs.length;i++){
+      const dx = xs[i]-xbar;
+      sxx += dx*dx;
+      sxy += dx*(ys[i]-ybar);
+    }
+    const b = sxy/sxx;
+    const a = ybar - b*xbar;
+    return {a,b};
+  }
+
+  function sse(xs, ys, a, b){
+    let S=0;
+    for (let i=0;i<xs.length;i++){
+      const e = ys[i]-(a+b*xs[i]);
+      S+=e*e;
+    }
+    return S;
+  }
+
+  const canvas=document.getElementById('plot');
+  const ctx=canvas.getContext('2d');
+
+  let data=genData();
+  let best=olsFit(data.xs,data.ys);
+  let bestSSE=sse(data.xs,data.ys,best.a,best.b);
+
+  let a=0, b=0.5;
+  let running=true;
+  let lastT=performance.now();
+
+  const aRange=document.getElementById('aRange');
+  const bRange=document.getElementById('bRange');
+  const spdRange=document.getElementById('spdRange');
+
+  function draw(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    const pad=60;
+    const xs=data.xs, ys=data.ys;
+    const xmin=Math.min(...xs)-1, xmax=Math.max(...xs)+1;
+    const ymin=Math.min(...ys)-1, ymax=Math.max(...ys)+1;
+    const x2px=x=>pad+(x-xmin)*(canvas.width-2*pad)/(xmax-xmin);
+    const y2py=y=>canvas.height-pad-(y-ymin)*(canvas.height-2*pad)/(ymax-ymin);
+
+    ctx.strokeStyle="#444";
+    ctx.strokeRect(pad,pad,canvas.width-2*pad,canvas.height-2*pad);
+
+    ctx.strokeStyle="green"; ctx.lineWidth=3;
+    ctx.beginPath();
+    ctx.moveTo(x2px(xmin),y2py(best.a+best.b*xmin));
+    ctx.lineTo(x2px(xmax),y2py(best.a+best.b*xmax));
+    ctx.stroke();
+
+    ctx.strokeStyle="red"; ctx.lineWidth=2;
+    ctx.beginPath();
+    ctx.moveTo(x2px(xmin),y2py(a+b*xmin));
+    ctx.lineTo(x2px(xmax),y2py(a+b*xmax));
+    ctx.stroke();
+
+    for(let i=0;i<xs.length;i++){
+      ctx.fillStyle="#7aa2ff";
+      ctx.beginPath();
+      ctx.arc(x2px(xs[i]),y2py(ys[i]),4,0,Math.PI*2);
+      ctx.fill();
+
+      ctx.strokeStyle="white";
+      ctx.beginPath();
+      ctx.moveTo(x2px(xs[i]),y2py(ys[i]));
+      ctx.lineTo(x2px(xs[i]),y2py(a+b*xs[i]));
+      ctx.stroke();
+    }
+    
+    // Update stats
+    document.getElementById('aVal').textContent = a.toFixed(2);
+    document.getElementById('bVal').textContent = b.toFixed(2);
+    const currentSSE = sse(data.xs, data.ys, a, b);
+    document.getElementById('sseNow').textContent = currentSSE.toFixed(4);
+    document.getElementById('sseBest').textContent = bestSSE.toFixed(4);
+    document.getElementById('abNow').textContent = `a=${a.toFixed(3)}, b=${b.toFixed(3)}`;
+    document.getElementById('abBest').textContent = `a*=${best.a.toFixed(3)}, b*=${best.b.toFixed(3)}`;
+    document.getElementById('modePill').textContent = running ? "モード: 自動更新中" : "モード: 停止中";
+  }
+
+  function step(t){
+    const dt=(t-lastT)/1000; lastT=t;
+    if(running){
+      const eps=1e-4;
+      const base=sse(data.xs,data.ys,a,b);
+      const da=(sse(data.xs,data.ys,a+eps,b)-base)/eps;
+      const db=(sse(data.xs,data.ys,a,b+eps)-base)/eps;
+      const lr=0.02*parseFloat(spdRange.value);
+      a-=lr*da*dt*10; // 少し感度を調整
+      b-=lr*db*dt*10;
+      aRange.value=a; bRange.value=b;
+    }
+    a=parseFloat(aRange.value);
+    b=parseFloat(bRange.value);
+    draw();
+    requestAnimationFrame(step);
+  }
+
+  document.getElementById('btnPlay').onclick=()=>running=true;
+  document.getElementById('btnPause').onclick=()=>running=false;
+  document.getElementById('btnReset').onclick=()=>{a=0;b=0.5;aRange.value=a;bRange.value=b;};
+  document.getElementById('btnNew').onclick=()=>{
+    data=genData();
+    best=olsFit(data.xs,data.ys);
+    bestSSE=sse(data.xs,data.ys,best.a,best.b);
+  };
+
+  requestAnimationFrame(step);
+})();
+</script>
+</body>
+</html>
