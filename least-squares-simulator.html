@@ -32,6 +32,13 @@
     .proc{ display:grid; gap:6px; margin-top:8px; }
     .proc-item{ font-size:12px; color:var(--muted); border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.02); border-radius:8px; padding:6px 8px; }
     .proc-item.active{ color:var(--text); border-color:rgba(122,162,255,0.45); background:rgba(122,162,255,0.14); }
+    .detail{ margin-top:6px; font-size:11px; line-height:1.6; color:#d5ddff; background:rgba(8,14,30,0.55); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:8px; overflow:auto; max-height:150px; }
+    .detail code{ font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .c-sse{ color:#7fd1ff; }
+    .c-a{ color:#ffd580; }
+    .c-b{ color:#ff9ec9; }
+    .c-e{ color:#9af7b0; }
+    .c-loss{ color:#ffb0b0; }
 
     @media (max-width:980px){
       .wrap{ grid-template-columns:1fr; }
@@ -110,10 +117,18 @@
       </div>
 
       <div class="proc" id="proc">
-        <div class="proc-item">1. 現在の SSE を計算</div>
-        <div class="proc-item">2. 勾配 (∂SSE/∂a, ∂SSE/∂b) を計算</div>
-        <div class="proc-item">3. a,b を負の勾配方向へ更新</div>
-        <div class="proc-item">4. 更新後の SSE が下がったか確認</div>
+        <div class="proc-item">1. 現在の SSE を計算
+          <div class="detail" id="detailSSE">-</div>
+        </div>
+        <div class="proc-item">2. 勾配 (∂SSE/∂a, ∂SSE/∂b) を計算
+          <div class="detail" id="detailGrad">-</div>
+        </div>
+        <div class="proc-item">3. a,b を負の勾配方向へ更新
+          <div class="detail" id="detailUpdate">-</div>
+        </div>
+        <div class="proc-item">4. 更新後の SSE が下がったか確認
+          <div class="detail" id="detailCheck">-</div>
+        </div>
       </div>
 
       <div class="hr"></div>
@@ -381,6 +396,7 @@
     }
 
     const currentSSE = sse(data.xs, data.ys, a, b);
+    const currentGrad = gradients(data.xs, data.ys, a, b);
 
     document.getElementById('aVal').textContent = a.toFixed(2);
     document.getElementById('bVal').textContent = b.toFixed(2);
@@ -403,6 +419,51 @@
       const deltaEl = document.getElementById('deltaSSE');
       deltaEl.textContent = `${lastUpdate.deltaSSE.toFixed(4)} (${lastUpdate.source === 'manual' ? '手動' : '自動'})`;
       deltaEl.style.color = lastUpdate.deltaSSE <= 0 ? 'var(--good)' : 'var(--bad)';
+    }
+
+    const previewN = Math.min(6, xs.length);
+    const sseTerms = [];
+    const pointLines = [];
+    for (let i = 0; i < previewN; i++) {
+      const yh = a + b * xs[i];
+      const e = ys[i] - yh;
+      sseTerms.push(`(<span class="c-e">${ys[i].toFixed(2)}-${yh.toFixed(2)}</span>)²`);
+    }
+    for (let i = 0; i < xs.length; i++) {
+      const yh = a + b * xs[i];
+      const e = ys[i] - yh;
+      pointLines.push(`P${i + 1}: (x,y)=(${xs[i].toFixed(2)},${ys[i].toFixed(2)}), ŷ=${yh.toFixed(2)}, |e|=${Math.abs(e).toFixed(2)}`);
+    }
+    const sseExpr = sseTerms.join(' + ') + (xs.length > previewN ? ' + ...' : '');
+    document.getElementById('detailSSE').innerHTML =
+      `<div><span class="c-sse">SSE</span> = Σ(<span class="c-e">yᵢ - (a + b xᵢ)</span>)²</div>` +
+      `<div><code><span class="c-sse">SSE</span> = ${sseExpr} = ${currentSSE.toFixed(4)}</code></div>` +
+      `<div><code>${pointLines.join('<br>')}</code></div>`;
+
+    const gradATerms = [];
+    const gradBTerms = [];
+    for (let i = 0; i < previewN; i++) {
+      const yh = a + b * xs[i];
+      gradATerms.push(`(${ys[i].toFixed(2)}-${yh.toFixed(2)})`);
+      gradBTerms.push(`${xs[i].toFixed(2)}*(${ys[i].toFixed(2)}-${yh.toFixed(2)})`);
+    }
+    document.getElementById('detailGrad').innerHTML =
+      `<div><code><span class="c-a">∂SSE/∂a</span> = -2 Σ(yᵢ-(a+b xᵢ)) = -2[${gradATerms.join(' + ')}${xs.length > previewN ? ' + ...' : ''}] = <span class="c-a">${currentGrad.da.toFixed(4)}</span></code></div>` +
+      `<div><code><span class="c-b">∂SSE/∂b</span> = -2 Σxᵢ(yᵢ-(a+b xᵢ)) = -2[${gradBTerms.join(' + ')}${xs.length > previewN ? ' + ...' : ''}] = <span class="c-b">${currentGrad.db.toFixed(4)}</span></code></div>`;
+
+    if (!lastUpdate) {
+      document.getElementById('detailUpdate').innerHTML = '<code>-</code>';
+      document.getElementById('detailCheck').innerHTML = '<code>-</code>';
+    } else {
+      document.getElementById('detailUpdate').innerHTML =
+        `<div><code><span class="c-a">a</span> ← ${lastUpdate.oldA.toFixed(4)} - ${lastUpdate.lr.toFixed(4)}*(${lastUpdate.da.toFixed(4)}) = <span class="c-a">${lastUpdate.nextA.toFixed(4)}</span></code></div>` +
+        `<div><code><span class="c-b">b</span> ← ${lastUpdate.oldB.toFixed(4)} - ${lastUpdate.lr.toFixed(4)}*(${lastUpdate.db.toFixed(4)}) = <span class="c-b">${lastUpdate.nextB.toFixed(4)}</span></code></div>`;
+
+      const improved = lastUpdate.deltaSSE <= 0;
+      document.getElementById('detailCheck').innerHTML =
+        `<div><code>更新前 <span class="c-sse">SSE</span> = ${lastUpdate.oldSSE.toFixed(4)}</code></div>` +
+        `<div><code>更新後 <span class="c-sse">SSE</span> = ${lastUpdate.nextSSE.toFixed(4)}</code></div>` +
+        `<div><code><span class="c-loss">ΔSSE</span> = ${lastUpdate.deltaSSE.toFixed(4)} → ${improved ? '改善(減少)' : '悪化(増加)'}</code></div>`;
     }
 
     modePill.textContent = running ? 'モード: 自動更新中' : 'モード: 停止中（1コマ可）';
