@@ -35,8 +35,8 @@
     .detail{ margin-top:6px; font-size:11px; line-height:1.6; color:#d5ddff; background:rgba(8,14,30,0.55); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:8px; overflow:auto; max-height:150px; }
     .detail code{ font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
     .c-sse{ color:#7fd1ff; }
-    .c-a{ color:#ffd580; }
-    .c-b{ color:#ff9ec9; }
+    .c-da{ color:#ffd580; }
+    .c-db{ color:#ff9ec9; }
     .c-e{ color:#9af7b0; }
     .c-loss{ color:#ffb0b0; }
     .c-eta{ color:#ffd86b; }
@@ -433,10 +433,10 @@
     } else {
       document.getElementById('gradVal').textContent = `${lastUpdate.da.toFixed(3)}, ${lastUpdate.db.toFixed(3)}`;
       document.getElementById('updateEq').innerHTML =
-        `<span class="c-a">a</span><-` +
-        `${lastUpdate.oldA.toFixed(3)}-<span class="c-eta">${lastUpdate.lr.toFixed(4)}</span>*(<span class="c-a">${lastUpdate.da.toFixed(3)}</span>), ` +
-        `<span class="c-b">b</span><-` +
-        `${lastUpdate.oldB.toFixed(3)}-<span class="c-eta">${lastUpdate.lr.toFixed(4)}</span>*(<span class="c-b">${lastUpdate.db.toFixed(3)}</span>)`;
+        `a<-` +
+        `${lastUpdate.oldA.toFixed(3)}-<span class="c-eta">${lastUpdate.lr.toFixed(4)}</span>*(<span class="c-da">${lastUpdate.da.toFixed(3)}</span>), ` +
+        `b<-` +
+        `${lastUpdate.oldB.toFixed(3)}-<span class="c-eta">${lastUpdate.lr.toFixed(4)}</span>*(<span class="c-db">${lastUpdate.db.toFixed(3)}</span>)`;
       const deltaEl = document.getElementById('deltaSSE');
       deltaEl.textContent = `${lastUpdate.deltaSSE.toFixed(4)} (${lastUpdate.source === 'manual' ? '手動' : '自動'})`;
       deltaEl.style.color = lastUpdate.deltaSSE <= 0 ? 'var(--good)' : 'var(--bad)';
@@ -469,17 +469,17 @@
       gradBTerms.push(`${xs[i].toFixed(2)}*(${ys[i].toFixed(2)}-${yh.toFixed(2)})`);
     }
     document.getElementById('detailGrad').innerHTML =
-      `<div><code><span class="c-a">∂SSE/∂a</span> = -2 Σ(yᵢ-(a+b xᵢ)) = -2[${gradATerms.join(' + ')}${xs.length > previewN ? ' + ...' : ''}] = <span class="c-a">${detailGrad.da.toFixed(4)}</span></code></div>` +
-      `<div><code><span class="c-b">∂SSE/∂b</span> = -2 Σxᵢ(yᵢ-(a+b xᵢ)) = -2[${gradBTerms.join(' + ')}${xs.length > previewN ? ' + ...' : ''}] = <span class="c-b">${detailGrad.db.toFixed(4)}</span></code></div>`;
+      `<div><code><span class="c-da">∂SSE/∂a</span> = -2 Σ(yᵢ-(a+b xᵢ)) = -2[${gradATerms.join(' + ')}${xs.length > previewN ? ' + ...' : ''}] = <span class="c-da">${detailGrad.da.toFixed(4)}</span></code></div>` +
+      `<div><code><span class="c-db">∂SSE/∂b</span> = -2 Σxᵢ(yᵢ-(a+b xᵢ)) = -2[${gradBTerms.join(' + ')}${xs.length > previewN ? ' + ...' : ''}] = <span class="c-db">${detailGrad.db.toFixed(4)}</span></code></div>`;
 
     if (!lastUpdate) {
       document.getElementById('detailUpdate').innerHTML = '<code>-</code>';
       document.getElementById('detailCheck').innerHTML = '<code>-</code>';
     } else {
       document.getElementById('detailUpdate').innerHTML =
-        `<div><code>定義式: <span class="c-a">a</span> ← <span class="c-a">a</span> - <span class="c-eta">η</span>(<span class="c-a">∂SSE/∂a</span>), <span class="c-b">b</span> ← <span class="c-b">b</span> - <span class="c-eta">η</span>(<span class="c-b">∂SSE/∂b</span>)</code></div>` +
-        `<div><code><span class="c-a">a</span> ← ${lastUpdate.oldA.toFixed(4)} - <span class="c-eta">${lastUpdate.lr.toFixed(4)}</span>*(<span class="c-a">${lastUpdate.da.toFixed(4)}</span>) = <span class="c-a">${lastUpdate.nextA.toFixed(4)}</span></code></div>` +
-        `<div><code><span class="c-b">b</span> ← ${lastUpdate.oldB.toFixed(4)} - <span class="c-eta">${lastUpdate.lr.toFixed(4)}</span>*(<span class="c-b">${lastUpdate.db.toFixed(4)}</span>) = <span class="c-b">${lastUpdate.nextB.toFixed(4)}</span></code></div>`;
+        `<div><code>定義式: a ← a - <span class="c-eta">η</span>(<span class="c-da">∂SSE/∂a</span>), b ← b - <span class="c-eta">η</span>(<span class="c-db">∂SSE/∂b</span>)</code></div>` +
+        `<div><code>a ← ${lastUpdate.oldA.toFixed(4)} - <span class="c-eta">${lastUpdate.lr.toFixed(4)}</span>*(<span class="c-da">${lastUpdate.da.toFixed(4)}</span>) = ${lastUpdate.nextA.toFixed(4)}</code></div>` +
+        `<div><code>b ← ${lastUpdate.oldB.toFixed(4)} - <span class="c-eta">${lastUpdate.lr.toFixed(4)}</span>*(<span class="c-db">${lastUpdate.db.toFixed(4)}</span>) = ${lastUpdate.nextB.toFixed(4)}</code></div>`;
 
       const improved = lastUpdate.deltaSSE <= 0;
       document.getElementById('detailCheck').innerHTML =
