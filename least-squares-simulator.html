@@ -39,6 +39,7 @@
     .c-b{ color:#ff9ec9; }
     .c-e{ color:#9af7b0; }
     .c-loss{ color:#ffb0b0; }
+    .c-eta{ color:#ffd86b; }
 
     @media (max-width:980px){
       .wrap{ grid-template-columns:1fr; }
@@ -427,11 +428,15 @@
 
     if (!lastUpdate) {
       document.getElementById('gradVal').textContent = '-';
-      document.getElementById('updateEq').textContent = '-';
+      document.getElementById('updateEq').innerHTML = '-';
       document.getElementById('deltaSSE').textContent = '-';
     } else {
       document.getElementById('gradVal').textContent = `${lastUpdate.da.toFixed(3)}, ${lastUpdate.db.toFixed(3)}`;
-      document.getElementById('updateEq').textContent = `a<-${lastUpdate.oldA.toFixed(3)}-${lastUpdate.lr.toFixed(4)}*(${lastUpdate.da.toFixed(3)}), b<-${lastUpdate.oldB.toFixed(3)}-${lastUpdate.lr.toFixed(4)}*(${lastUpdate.db.toFixed(3)})`;
+      document.getElementById('updateEq').innerHTML =
+        `<span class="c-a">a</span><-` +
+        `${lastUpdate.oldA.toFixed(3)}-<span class="c-eta">${lastUpdate.lr.toFixed(4)}</span>*(<span class="c-a">${lastUpdate.da.toFixed(3)}</span>), ` +
+        `<span class="c-b">b</span><-` +
+        `${lastUpdate.oldB.toFixed(3)}-<span class="c-eta">${lastUpdate.lr.toFixed(4)}</span>*(<span class="c-b">${lastUpdate.db.toFixed(3)}</span>)`;
       const deltaEl = document.getElementById('deltaSSE');
       deltaEl.textContent = `${lastUpdate.deltaSSE.toFixed(4)} (${lastUpdate.source === 'manual' ? '手動' : '自動'})`;
       deltaEl.style.color = lastUpdate.deltaSSE <= 0 ? 'var(--good)' : 'var(--bad)';
@@ -472,9 +477,9 @@
       document.getElementById('detailCheck').innerHTML = '<code>-</code>';
     } else {
       document.getElementById('detailUpdate').innerHTML =
-        `<div><code>定義式: <span class="c-a">a</span> ← <span class="c-a">a</span> - η(∂SSE/∂a), <span class="c-b">b</span> ← <span class="c-b">b</span> - η(∂SSE/∂b)</code></div>` +
-        `<div><code><span class="c-a">a</span> ← ${lastUpdate.oldA.toFixed(4)} - ${lastUpdate.lr.toFixed(4)}*(${lastUpdate.da.toFixed(4)}) = <span class="c-a">${lastUpdate.nextA.toFixed(4)}</span></code></div>` +
-        `<div><code><span class="c-b">b</span> ← ${lastUpdate.oldB.toFixed(4)} - ${lastUpdate.lr.toFixed(4)}*(${lastUpdate.db.toFixed(4)}) = <span class="c-b">${lastUpdate.nextB.toFixed(4)}</span></code></div>`;
+        `<div><code>定義式: <span class="c-a">a</span> ← <span class="c-a">a</span> - <span class="c-eta">η</span>(<span class="c-a">∂SSE/∂a</span>), <span class="c-b">b</span> ← <span class="c-b">b</span> - <span class="c-eta">η</span>(<span class="c-b">∂SSE/∂b</span>)</code></div>` +
+        `<div><code><span class="c-a">a</span> ← ${lastUpdate.oldA.toFixed(4)} - <span class="c-eta">${lastUpdate.lr.toFixed(4)}</span>*(<span class="c-a">${lastUpdate.da.toFixed(4)}</span>) = <span class="c-a">${lastUpdate.nextA.toFixed(4)}</span></code></div>` +
+        `<div><code><span class="c-b">b</span> ← ${lastUpdate.oldB.toFixed(4)} - <span class="c-eta">${lastUpdate.lr.toFixed(4)}</span>*(<span class="c-b">${lastUpdate.db.toFixed(4)}</span>) = <span class="c-b">${lastUpdate.nextB.toFixed(4)}</span></code></div>`;
 
       const improved = lastUpdate.deltaSSE <= 0;
       document.getElementById('detailCheck').innerHTML =
