@@ -408,6 +408,10 @@
 
     const currentSSE = sse(data.xs, data.ys, a, b);
     const currentGrad = gradients(data.xs, data.ys, a, b);
+    const detailA = lastUpdate ? lastUpdate.oldA : a;
+    const detailB = lastUpdate ? lastUpdate.oldB : b;
+    const detailSSE = lastUpdate ? lastUpdate.oldSSE : currentSSE;
+    const detailGrad = lastUpdate ? { da: lastUpdate.da, db: lastUpdate.db } : currentGrad;
 
     document.getElementById('aVal').textContent = a.toFixed(2);
     document.getElementById('bVal').textContent = b.toFixed(2);
@@ -437,31 +441,31 @@
     const sseTerms = [];
     const pointLines = [];
     for (let i = 0; i < previewN; i++) {
-      const yh = a + b * xs[i];
+      const yh = detailA + detailB * xs[i];
       const e = ys[i] - yh;
       sseTerms.push(`(<span class="c-e">${ys[i].toFixed(2)}-${yh.toFixed(2)}</span>)²`);
     }
     for (let i = 0; i < xs.length; i++) {
-      const yh = a + b * xs[i];
+      const yh = detailA + detailB * xs[i];
       const e = ys[i] - yh;
       pointLines.push(`P${i + 1}: (x,y)=(${xs[i].toFixed(2)},${ys[i].toFixed(2)}), y_pred=${yh.toFixed(2)}, |e|=${Math.abs(e).toFixed(2)}`);
     }
     const sseExpr = sseTerms.join(' + ') + (xs.length > previewN ? ' + ...' : '');
     document.getElementById('detailSSE').innerHTML =
       `<div><span class="c-sse">SSE</span> = Σ(<span class="c-e">yᵢ - (a + b xᵢ)</span>)²</div>` +
-      `<div><code><span class="c-sse">SSE</span> = ${sseExpr} = ${currentSSE.toFixed(4)}</code></div>` +
+      `<div><code><span class="c-sse">SSE</span> = ${sseExpr} = ${detailSSE.toFixed(4)}</code></div>` +
       `<div><code>${pointLines.join('<br>')}</code></div>`;
 
     const gradATerms = [];
     const gradBTerms = [];
     for (let i = 0; i < previewN; i++) {
-      const yh = a + b * xs[i];
+      const yh = detailA + detailB * xs[i];
       gradATerms.push(`(${ys[i].toFixed(2)}-${yh.toFixed(2)})`);
       gradBTerms.push(`${xs[i].toFixed(2)}*(${ys[i].toFixed(2)}-${yh.toFixed(2)})`);
     }
     document.getElementById('detailGrad').innerHTML =
-      `<div><code><span class="c-a">∂SSE/∂a</span> = -2 Σ(yᵢ-(a+b xᵢ)) = -2[${gradATerms.join(' + ')}${xs.length > previewN ? ' + ...' : ''}] = <span class="c-a">${currentGrad.da.toFixed(4)}</span></code></div>` +
-      `<div><code><span class="c-b">∂SSE/∂b</span> = -2 Σxᵢ(yᵢ-(a+b xᵢ)) = -2[${gradBTerms.join(' + ')}${xs.length > previewN ? ' + ...' : ''}] = <span class="c-b">${currentGrad.db.toFixed(4)}</span></code></div>`;
+      `<div><code><span class="c-a">∂SSE/∂a</span> = -2 Σ(yᵢ-(a+b xᵢ)) = -2[${gradATerms.join(' + ')}${xs.length > previewN ? ' + ...' : ''}] = <span class="c-a">${detailGrad.da.toFixed(4)}</span></code></div>` +
+      `<div><code><span class="c-b">∂SSE/∂b</span> = -2 Σxᵢ(yᵢ-(a+b xᵢ)) = -2[${gradBTerms.join(' + ')}${xs.length > previewN ? ' + ...' : ''}] = <span class="c-b">${detailGrad.db.toFixed(4)}</span></code></div>`;
 
     if (!lastUpdate) {
       document.getElementById('detailUpdate').innerHTML = '<code>-</code>';
