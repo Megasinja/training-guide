@@ -53,7 +53,7 @@
     <div class="card">
       <h1>単回帰分析：最小二乗法（OLS）の直感的アニメーション</h1>
       <p class="sub">
-        回帰直線 <span class="pill">ŷ = a + b x</span> を動かすと、各点の残差 <span class="pill">eᵢ = yᵢ − ŷᵢ</span> が変わります。
+        回帰直線 <span class="pill">y_pred = a + b x</span>（x座標から計算される予測値）を動かすと、各点の残差 <span class="pill">eᵢ = yᵢ − y_predᵢ</span> が変わります。
         最小二乗法は <span class="pill">SSE = Σ eᵢ²</span> を最小にする (a,b) を選びます。
       </p>
       <canvas id="plot" width="820" height="520"></canvas>
@@ -432,7 +432,7 @@
     for (let i = 0; i < xs.length; i++) {
       const yh = a + b * xs[i];
       const e = ys[i] - yh;
-      pointLines.push(`P${i + 1}: (x,y)=(${xs[i].toFixed(2)},${ys[i].toFixed(2)}), ŷ=${yh.toFixed(2)}, |e|=${Math.abs(e).toFixed(2)}`);
+      pointLines.push(`P${i + 1}: (x,y)=(${xs[i].toFixed(2)},${ys[i].toFixed(2)}), y_pred=${yh.toFixed(2)}, |e|=${Math.abs(e).toFixed(2)}`);
     }
     const sseExpr = sseTerms.join(' + ') + (xs.length > previewN ? ' + ...' : '');
     document.getElementById('detailSSE').innerHTML =
