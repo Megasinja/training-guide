@@ -207,7 +207,7 @@
   function step(t){
     const dt=(t-lastT)/1000; lastT=t;
     if(running){
-      const eps=1e-3;
+      const eps=1e-4;
       const base=sse(data.xs,data.ys,a,b);
       const da=(sse(data.xs,data.ys,a+eps,b)-base)/eps;
       const db=(sse(data.xs,data.ys,a,b+eps)-base)/eps;
