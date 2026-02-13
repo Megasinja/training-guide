@@ -9,17 +9,16 @@ AI新人研修用
 
 ## 📖 セットアップ手順
 
-### ステップ3: GitHub Pagesを有効化する
+### ステップ1: GitHub Pagesを有効化する
 
 1. リポジトリの **「Settings」** タブをクリック
 2. 左メニューの **「Pages」** をクリック
 3. Source セクションで以下を設定：
-   - **Source:** Deploy from a branch（または GitHub Actions）
-   - **Branch:** main
-   - **Folder:** / (root)
+   - **Source:** GitHub Actions（推奨）または Deploy from a branch
+   - （ブランチから直接デプロイする場合）**Branch:** main、**Folder:** / (root)
 4. **「Save」** をクリック
 
-### ステップ4: 公開を確認する 🎉
+### ステップ2: 公開を確認する 🎉
 
 数分後、以下のURLでページが公開されます：
 - https://megasinja.github.io/training-guide/
