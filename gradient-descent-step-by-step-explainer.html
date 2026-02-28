@@ -1,0 +1,1374 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>勾配降下法 1ステップ解説シミュレータ</title>
+  <style>
+    :root {
+      --bg:#081326;
+      --panel:#0f1f3e;
+      --text:#e9efff;
+      --muted:#aab8de;
+      --line:#2b406e;
+      --path:#ffe178;
+      --point:#ff8e8e;
+      --old:#ffd06b;
+      --grad:#ff94bd;
+      --upd:#7fd6ff;
+      --good:#6fdfa7;
+      --warn:#ffd06b;
+      --bad:#ff8b8b;
+      --loss:#ffd974;
+      --gnorm:#9fc8ff;
+      --active:#ffffff;
+    }
+
+    * { box-sizing:border-box; }
+
+    body {
+      margin:0;
+      min-height:100vh;
+      color:var(--text);
+      font-family:"Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif;
+      background:
+        radial-gradient(circle at 12% 14%, rgba(115,167,255,0.17), transparent 34%),
+        radial-gradient(circle at 88% 10%, rgba(111,223,167,0.16), transparent 28%),
+        linear-gradient(180deg, #060f1d, var(--bg));
+    }
+
+    .top-nav {
+      max-width:1220px;
+      margin:14px auto 0;
+      padding:0 18px;
+      display:flex;
+      gap:14px;
+      flex-wrap:wrap;
+    }
+
+    .top-link {
+      color:var(--muted);
+      text-decoration:none;
+      font-size:13px;
+    }
+
+    .top-link:hover {
+      color:var(--text);
+      text-decoration:underline;
+    }
+
+    .wrap {
+      max-width:1220px;
+      margin:0 auto;
+      padding:16px 18px 24px;
+      display:grid;
+      grid-template-columns:1.23fr 0.77fr;
+      gap:16px;
+    }
+
+    .card {
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,0.09);
+      background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+      padding:14px;
+      box-shadow:0 15px 32px rgba(0,0,0,0.35);
+    }
+
+    h1 {
+      margin:0 0 8px;
+      font-size:19px;
+      line-height:1.35;
+    }
+
+    .sub {
+      margin:0 0 12px;
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.65;
+    }
+
+    .pill {
+      display:inline-block;
+      padding:2px 8px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,0.13);
+      background:rgba(255,255,255,0.05);
+      color:var(--muted);
+      font-size:12px;
+    }
+
+    canvas {
+      width:100%;
+      height:auto;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,0.09);
+      background:rgba(4,10,24,0.45);
+    }
+
+    .legend {
+      margin-top:9px;
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      font-size:12px;
+      color:var(--muted);
+    }
+
+    .dot {
+      display:inline-block;
+      width:10px;
+      height:10px;
+      border-radius:50%;
+      margin-right:6px;
+      vertical-align:middle;
+    }
+
+    .mini-title {
+      margin:12px 0 7px;
+      font-size:13px;
+      color:var(--muted);
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+    }
+
+    .row {
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      align-items:center;
+    }
+
+    button {
+      cursor:pointer;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,0.16);
+      background:rgba(255,255,255,0.06);
+      color:var(--text);
+      font-size:13px;
+      padding:8px 10px;
+      transition:background .2s ease;
+    }
+
+    button:hover { background:rgba(255,255,255,0.11); }
+
+    button.primary {
+      border-color:rgba(115,167,255,0.58);
+      background:rgba(115,167,255,0.21);
+    }
+
+    button.primary:hover { background:rgba(115,167,255,0.28); }
+
+    .selectrow {
+      display:grid;
+      grid-template-columns:112px 1fr;
+      gap:10px;
+      margin:8px 0;
+      align-items:center;
+      font-size:13px;
+    }
+
+    select {
+      width:100%;
+      border-radius:9px;
+      border:1px solid rgba(255,255,255,0.15);
+      background:rgba(255,255,255,0.06);
+      color:var(--text);
+      padding:7px 8px;
+      font-size:13px;
+    }
+
+    .slider {
+      margin:10px 0;
+      display:grid;
+      grid-template-columns:138px 1fr 84px;
+      gap:10px;
+      align-items:center;
+      font-size:13px;
+    }
+
+    input[type="range"] {
+      width:100%;
+      accent-color:#75a8ff;
+    }
+
+    .hr {
+      height:1px;
+      margin:12px 0;
+      background:rgba(255,255,255,0.11);
+    }
+
+    .kv {
+      display:grid;
+      grid-template-columns:1fr auto;
+      gap:8px 10px;
+      font-size:13px;
+    }
+
+    .kv div:nth-child(odd) { color:var(--muted); }
+
+    .status {
+      margin-top:8px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,0.1);
+      background:rgba(0,0,0,0.2);
+      padding:10px;
+      font-size:13px;
+      line-height:1.55;
+    }
+
+    .status.good {
+      border-color:rgba(103,215,154,0.52);
+      background:rgba(103,215,154,0.12);
+    }
+
+    .status.warn {
+      border-color:rgba(255,208,107,0.52);
+      background:rgba(255,208,107,0.12);
+    }
+
+    .status.bad {
+      border-color:rgba(255,135,135,0.55);
+      background:rgba(255,135,135,0.12);
+    }
+
+    .formula {
+      margin-top:8px;
+      border-radius:8px;
+      border:1px solid rgba(255,255,255,0.08);
+      background:rgba(8,16,32,0.55);
+      padding:8px;
+      color:#dce5ff;
+      font-size:12px;
+      line-height:1.6;
+    }
+
+    .proc-head {
+      margin-top:4px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      font-size:13px;
+      color:var(--muted);
+    }
+
+    .proc {
+      display:grid;
+      gap:6px;
+      margin-top:8px;
+    }
+
+    .proc-item {
+      font-size:12px;
+      color:var(--muted);
+      border:1px solid rgba(255,255,255,0.08);
+      background:rgba(255,255,255,0.02);
+      border-radius:8px;
+      padding:6px 8px;
+    }
+
+    .proc-item.active {
+      color:var(--text);
+      border-color:rgba(122,162,255,0.45);
+      background:rgba(122,162,255,0.14);
+    }
+
+    .detail {
+      margin-top:6px;
+      border-radius:8px;
+      border:1px solid rgba(255,255,255,0.08);
+      background:rgba(2,8,20,0.55);
+      padding:8px;
+      color:#d8e2ff;
+      font-size:11px;
+      line-height:1.6;
+      max-height:150px;
+      overflow:auto;
+      font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      white-space:pre-wrap;
+    }
+
+    .note {
+      margin:10px 0 0;
+      color:var(--muted);
+      font-size:12px;
+      line-height:1.6;
+    }
+
+    @media (max-width: 990px) {
+      .wrap { grid-template-columns:1fr; }
+      .slider { grid-template-columns:112px 1fr 84px; }
+      .selectrow { grid-template-columns:100px 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="top-nav">
+    <a class="top-link" href="index.html">← 新卒AI研修トップへ戻る</a>
+    <a class="top-link" href="gradient-descent-visualizer.html">通常版 勾配降下ビジュアライザへ</a>
+  </div>
+
+  <div class="wrap">
+    <section class="card">
+      <h1>勾配降下法 1ステップ解説シミュレータ</h1>
+      <p class="sub">
+        このページは「1ステップで何を計算し、なぜその方向へ動くか」を
+        <span class="pill">シミュレーションと同期</span>して理解する教材です。
+        <span class="pill">勾配計算 → 更新量計算 → 座標更新 → 損失比較</span> を毎回表示します。
+      </p>
+
+      <canvas id="plot" width="860" height="520"></canvas>
+
+      <div class="legend">
+        <span><span class="dot" style="background:var(--path)"></span>探索軌跡</span>
+        <span><span class="dot" style="background:var(--point)"></span>現在点</span>
+        <span><span class="dot" style="background:var(--old)"></span>更新前の点</span>
+        <span><span class="dot" style="background:var(--grad)"></span>勾配ベクトル ∇f</span>
+        <span><span class="dot" style="background:var(--upd)"></span>更新ベクトル Δθ</span>
+        <span><span class="dot" style="background:var(--good)"></span>既知の最小点（参考）</span>
+      </div>
+
+      <div class="formula">
+        基本式: <code>θ_{t+1} = θ_t + Δθ</code>,
+        <code>Δθ = -η_t ∇f(θ_t)</code>（SGD）<br>
+        学習率: <code>η_t = η / (1 + ρt)</code>
+      </div>
+
+      <div class="mini-title">
+        <span>Loss と ||∇f|| の推移</span>
+        <span class="pill" id="modePill">モード: 学習中</span>
+      </div>
+      <canvas id="lossPlot" width="860" height="190"></canvas>
+    </section>
+
+    <section class="card">
+      <div class="row" style="justify-content:space-between;">
+        <div style="font-size:14px; font-weight:700;">操作パネル</div>
+        <div class="pill" id="statePill">状態: 計算中</div>
+      </div>
+
+      <div class="row" style="margin-top:10px;">
+        <button class="primary" id="btnPlay">再生</button>
+        <button id="btnPause">停止</button>
+        <button id="btnStep">1ステップ</button>
+        <button id="btnReset">開始点へリセット</button>
+        <button id="btnRandom">開始点ランダム</button>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="selectrow">
+        <div>目的関数</div>
+        <select id="fnSelect">
+          <option value="quadratic">二次関数（凸）</option>
+          <option value="rosenbrock">Rosenbrock（細い谷）</option>
+          <option value="himmelblau">Himmelblau（多峰性）</option>
+          <option value="rastrigin">Rastrigin（局所解多い）</option>
+        </select>
+      </div>
+
+      <div class="selectrow">
+        <div>最適化手法</div>
+        <select id="optSelect">
+          <option value="sgd">SGD</option>
+          <option value="momentum">Momentum</option>
+          <option value="adam">Adam</option>
+        </select>
+      </div>
+
+      <div class="slider">
+        <div>学習率 η</div>
+        <input id="lrRange" type="range" min="0.0005" max="0.3000" step="0.0005" value="0.0200" />
+        <div id="lrVal">0.0200</div>
+      </div>
+
+      <div class="slider">
+        <div>減衰 ρ</div>
+        <input id="decayRange" type="range" min="0.000" max="0.050" step="0.001" value="0.004" />
+        <div id="decayVal">0.004</div>
+      </div>
+
+      <div class="slider">
+        <div>β1</div>
+        <input id="beta1Range" type="range" min="0.00" max="0.99" step="0.01" value="0.90" />
+        <div id="beta1Val">0.90</div>
+      </div>
+
+      <div class="slider">
+        <div>β2</div>
+        <input id="beta2Range" type="range" min="0.50" max="0.999" step="0.001" value="0.999" />
+        <div id="beta2Val">0.999</div>
+      </div>
+
+      <div class="slider">
+        <div>勾配クリップ</div>
+        <input id="clipRange" type="range" min="0.00" max="50.00" step="0.10" value="8.00" />
+        <div id="clipVal">8.00</div>
+      </div>
+
+      <div class="slider">
+        <div>勾配ノイズ σ</div>
+        <input id="noiseRange" type="range" min="0.00" max="2.00" step="0.01" value="0.00" />
+        <div id="noiseVal">0.00</div>
+      </div>
+
+      <div class="slider">
+        <div>更新/秒</div>
+        <input id="speedRange" type="range" min="1" max="180" step="1" value="14" />
+        <div id="speedVal">14</div>
+      </div>
+
+      <div class="slider">
+        <div>開始 x</div>
+        <input id="startXRange" type="range" min="-4" max="4" step="0.01" value="-3.20" />
+        <div id="startXVal">-3.20</div>
+      </div>
+
+      <div class="slider">
+        <div>開始 y</div>
+        <input id="startYRange" type="range" min="-4" max="4" step="0.01" value="3.10" />
+        <div id="startYVal">3.10</div>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="kv">
+        <div>ステップ</div><div id="stepVal">0</div>
+        <div>現在 f(x,y)</div><div id="fNowVal">-</div>
+        <div>現在 ||∇f||</div><div id="gNormVal">-</div>
+        <div>現在座標 (x,y)</div><div id="xyNowVal">-</div>
+        <div>現在 η_t</div><div id="etaVal">-</div>
+        <div>直前 Δf</div><div id="deltaFVal">-</div>
+        <div>直前移動量 ||Δθ||</div><div id="moveVal">-</div>
+        <div>ベスト f</div><div id="bestVal">-</div>
+        <div>ベスト座標</div><div id="bestXYVal">-</div>
+      </div>
+
+      <div id="statusBox" class="status">評価: 初期化中...</div>
+
+      <div class="hr"></div>
+
+      <div class="proc-head">
+        <div>1ステップ計算の説明</div>
+        <div class="pill" id="phasePill">手順: 待機中</div>
+      </div>
+
+      <div class="proc" id="proc">
+        <div class="proc-item">1. 現在点で損失と勾配を計算
+          <div class="detail" id="detailGrad">-</div>
+        </div>
+        <div class="proc-item">2. 最適化手法で更新量 Δθ を計算
+          <div class="detail" id="detailUpdate">-</div>
+        </div>
+        <div class="proc-item">3. 座標を更新し、範囲制約を適用
+          <div class="detail" id="detailApply">-</div>
+        </div>
+        <div class="proc-item">4. 更新前後の損失を比較
+          <div class="detail" id="detailCheck">-</div>
+        </div>
+      </div>
+
+      <p class="note">
+        使い方: まず <code>quadratic + SGD</code> で基本を確認し、次に <code>rosenbrock</code> で収束の難しさ、
+        最後に <code>himmelblau / rastrigin</code> で初期値依存や局所解を観察してください。
+      </p>
+    </section>
+  </div>
+
+  <script>
+  (() => {
+    function randn() {
+      let u = 0;
+      let v = 0;
+      while (u === 0) u = Math.random();
+      while (v === 0) v = Math.random();
+      return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+    }
+
+    function clamp(v, lo, hi) {
+      return Math.min(hi, Math.max(lo, v));
+    }
+
+    function hypot2(x, y) {
+      return Math.sqrt(x * x + y * y);
+    }
+
+    function colorMix(a, b, t) {
+      return [
+        Math.round(a[0] + (b[0] - a[0]) * t),
+        Math.round(a[1] + (b[1] - a[1]) * t),
+        Math.round(a[2] + (b[2] - a[2]) * t)
+      ];
+    }
+
+    function heatRgb(t) {
+      const c1 = [18, 38, 82];
+      const c2 = [46, 108, 204];
+      const c3 = [108, 205, 166];
+      const c4 = [249, 221, 117];
+      const c5 = [234, 94, 109];
+      const u = clamp(t, 0, 1);
+      if (u < 0.25) return colorMix(c1, c2, u / 0.25);
+      if (u < 0.5) return colorMix(c2, c3, (u - 0.25) / 0.25);
+      if (u < 0.75) return colorMix(c3, c4, (u - 0.5) / 0.25);
+      return colorMix(c4, c5, (u - 0.75) / 0.25);
+    }
+
+    function heatColorA(t, a) {
+      const c = heatRgb(t);
+      return `rgba(${c[0]},${c[1]},${c[2]},${a})`;
+    }
+
+    function drawArrow(ctx, x0, y0, x1, y1, color, width) {
+      const dx = x1 - x0;
+      const dy = y1 - y0;
+      const len = Math.sqrt(dx * dx + dy * dy);
+      if (len < 1e-6) return;
+
+      const ux = dx / len;
+      const uy = dy / len;
+      const head = Math.min(12, Math.max(7, len * 0.22));
+
+      ctx.strokeStyle = color;
+      ctx.fillStyle = color;
+      ctx.lineWidth = width;
+      ctx.beginPath();
+      ctx.moveTo(x0, y0);
+      ctx.lineTo(x1, y1);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x1 - ux * head - uy * head * 0.55, y1 - uy * head + ux * head * 0.55);
+      ctx.lineTo(x1 - ux * head + uy * head * 0.55, y1 - uy * head - ux * head * 0.55);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    const functions = {
+      quadratic: {
+        label: '二次関数（凸）',
+        equation: 'f(x,y) = (x-1)^2 + 2(y+0.5)^2',
+        domain: { xmin: -4, xmax: 4, ymin: -4, ymax: 4 },
+        start: { x: -3.2, y: 3.1 },
+        optima: [{ x: 1.0, y: -0.5 }],
+        fn: (x, y) => (x - 1) * (x - 1) + 2 * (y + 0.5) * (y + 0.5),
+        grad: (x, y) => ({ gx: 2 * (x - 1), gy: 4 * (y + 0.5) })
+      },
+      rosenbrock: {
+        label: 'Rosenbrock（細い谷）',
+        equation: 'f(x,y) = (1-x)^2 + 100(y-x^2)^2',
+        domain: { xmin: -2.2, xmax: 2.2, ymin: -1.2, ymax: 3.0 },
+        start: { x: -1.4, y: 1.8 },
+        optima: [{ x: 1.0, y: 1.0 }],
+        fn: (x, y) => {
+          const t1 = 1 - x;
+          const t2 = y - x * x;
+          return t1 * t1 + 100 * t2 * t2;
+        },
+        grad: (x, y) => {
+          const t2 = y - x * x;
+          return {
+            gx: -2 * (1 - x) - 400 * x * t2,
+            gy: 200 * t2
+          };
+        }
+      },
+      himmelblau: {
+        label: 'Himmelblau（多峰性）',
+        equation: 'f(x,y) = (x^2+y-11)^2 + (x+y^2-7)^2',
+        domain: { xmin: -6, xmax: 6, ymin: -6, ymax: 6 },
+        start: { x: -4.0, y: 0.0 },
+        optima: [
+          { x: 3.0, y: 2.0 },
+          { x: -2.805118, y: 3.131312 },
+          { x: -3.77931, y: -3.283186 },
+          { x: 3.584428, y: -1.848126 }
+        ],
+        fn: (x, y) => {
+          const a = x * x + y - 11;
+          const b = x + y * y - 7;
+          return a * a + b * b;
+        },
+        grad: (x, y) => {
+          const a = x * x + y - 11;
+          const b = x + y * y - 7;
+          return {
+            gx: 4 * x * a + 2 * b,
+            gy: 2 * a + 4 * y * b
+          };
+        }
+      },
+      rastrigin: {
+        label: 'Rastrigin（局所解多い）',
+        equation: 'f(x,y) = 20 + x^2 + y^2 - 10(cos2πx + cos2πy)',
+        domain: { xmin: -5.2, xmax: 5.2, ymin: -5.2, ymax: 5.2 },
+        start: { x: 3.8, y: 3.6 },
+        optima: [{ x: 0.0, y: 0.0 }],
+        fn: (x, y) => 20 + x * x + y * y - 10 * (Math.cos(2 * Math.PI * x) + Math.cos(2 * Math.PI * y)),
+        grad: (x, y) => ({
+          gx: 2 * x + 20 * Math.PI * Math.sin(2 * Math.PI * x),
+          gy: 2 * y + 20 * Math.PI * Math.sin(2 * Math.PI * y)
+        })
+      }
+    };
+
+    const plot = document.getElementById('plot');
+    const pctx = plot.getContext('2d');
+    const lossPlot = document.getElementById('lossPlot');
+    const lctx = lossPlot.getContext('2d');
+
+    const fnSelect = document.getElementById('fnSelect');
+    const optSelect = document.getElementById('optSelect');
+
+    const lrRange = document.getElementById('lrRange');
+    const decayRange = document.getElementById('decayRange');
+    const beta1Range = document.getElementById('beta1Range');
+    const beta2Range = document.getElementById('beta2Range');
+    const clipRange = document.getElementById('clipRange');
+    const noiseRange = document.getElementById('noiseRange');
+    const speedRange = document.getElementById('speedRange');
+    const startXRange = document.getElementById('startXRange');
+    const startYRange = document.getElementById('startYRange');
+
+    const procItems = Array.from(document.querySelectorAll('#proc .proc-item'));
+
+    let running = true;
+    let stepCount = 0;
+    let x = 0;
+    let y = 0;
+
+    let velocity = { x: 0, y: 0 };
+    let adam = { mx: 0, my: 0, vx: 0, vy: 0 };
+
+    let best = { f: Infinity, x: 0, y: 0 };
+    let trajectory = [];
+    let lossHistory = [];
+    let lastStep = null;
+    let moveAnim = null;
+
+    let lastT = performance.now();
+    let accMs = 0;
+
+    let bgCanvas = null;
+    let zStats = { lMin: 0, lMax: 1 };
+
+    const phaseDurationMs = 1500;
+    const maxHistory = 320;
+    const maxTrajectory = 1800;
+
+    function currentFunction() {
+      return functions[fnSelect.value];
+    }
+
+    function sliders() {
+      return {
+        optimizer: optSelect.value,
+        lr: parseFloat(lrRange.value),
+        decay: parseFloat(decayRange.value),
+        beta1: parseFloat(beta1Range.value),
+        beta2: parseFloat(beta2Range.value),
+        clip: parseFloat(clipRange.value),
+        noise: parseFloat(noiseRange.value),
+        speed: parseInt(speedRange.value, 10)
+      };
+    }
+
+    function setStartSliderRange() {
+      const d = currentFunction().domain;
+      startXRange.min = d.xmin;
+      startXRange.max = d.xmax;
+      startYRange.min = d.ymin;
+      startYRange.max = d.ymax;
+    }
+
+    function setStartSliders(x0, y0) {
+      startXRange.value = clamp(x0, parseFloat(startXRange.min), parseFloat(startXRange.max));
+      startYRange.value = clamp(y0, parseFloat(startYRange.min), parseFloat(startYRange.max));
+    }
+
+    function currentStart() {
+      return {
+        x: parseFloat(startXRange.value),
+        y: parseFloat(startYRange.value)
+      };
+    }
+
+    function randomStartPoint() {
+      const d = currentFunction().domain;
+      const mx = (d.xmax - d.xmin) * 0.08;
+      const my = (d.ymax - d.ymin) * 0.08;
+      return {
+        x: d.xmin + mx + Math.random() * (d.xmax - d.xmin - 2 * mx),
+        y: d.ymin + my + Math.random() * (d.ymax - d.ymin - 2 * my)
+      };
+    }
+
+    function resetOptimizerState() {
+      velocity.x = 0;
+      velocity.y = 0;
+      adam.mx = 0;
+      adam.my = 0;
+      adam.vx = 0;
+      adam.vy = 0;
+    }
+
+    function currentEta() {
+      const s = sliders();
+      return s.lr / (1 + s.decay * stepCount);
+    }
+
+    function buildBackground() {
+      const fdef = currentFunction();
+      const d = fdef.domain;
+      const bw = 240;
+      const bh = 180;
+
+      bgCanvas = document.createElement('canvas');
+      bgCanvas.width = bw;
+      bgCanvas.height = bh;
+      const bctx = bgCanvas.getContext('2d');
+      const img = bctx.createImageData(bw, bh);
+
+      const vals = new Array(bw * bh);
+      let k = 0;
+      for (let py = 0; py < bh; py += 1) {
+        for (let px = 0; px < bw; px += 1) {
+          const xv = d.xmin + ((px + 0.5) * (d.xmax - d.xmin)) / bw;
+          const yv = d.ymax - ((py + 0.5) * (d.ymax - d.ymin)) / bh;
+          vals[k] = Math.max(0, fdef.fn(xv, yv));
+          k += 1;
+        }
+      }
+
+      const sorted = vals.slice().sort((a, b) => a - b);
+      const q02 = sorted[Math.floor(sorted.length * 0.02)];
+      const q95 = sorted[Math.floor(sorted.length * 0.95)];
+      zStats.lMin = Math.log1p(q02);
+      zStats.lMax = Math.log1p(q95 + 1e-9);
+
+      k = 0;
+      for (let py = 0; py < bh; py += 1) {
+        for (let px = 0; px < bw; px += 1) {
+          const lv = Math.log1p(vals[k]);
+          const t = clamp((lv - zStats.lMin) / Math.max(1e-9, zStats.lMax - zStats.lMin), 0, 1);
+          const rgb = heatRgb(t);
+          const idx = (py * bw + px) * 4;
+          img.data[idx] = rgb[0];
+          img.data[idx + 1] = rgb[1];
+          img.data[idx + 2] = rgb[2];
+          img.data[idx + 3] = 255;
+          k += 1;
+        }
+      }
+
+      bctx.putImageData(img, 0, 0);
+    }
+
+    function getDisplayPoint(now) {
+      if (!moveAnim) {
+        return { drawX: x, drawY: y };
+      }
+      const p = Math.min(1, (now - moveAnim.start) / moveAnim.duration);
+      const e = 1 - Math.pow(1 - p, 3);
+      const drawX = moveAnim.fromX + (moveAnim.toX - moveAnim.fromX) * e;
+      const drawY = moveAnim.fromY + (moveAnim.toY - moveAnim.fromY) * e;
+      if (p >= 1) {
+        moveAnim = null;
+      }
+      return { drawX, drawY };
+    }
+
+    function softReset(x0, y0) {
+      x = x0;
+      y = y0;
+      stepCount = 0;
+      resetOptimizerState();
+
+      const f = currentFunction().fn(x, y);
+      const g = currentFunction().grad(x, y);
+      const gNorm = hypot2(g.gx, g.gy);
+
+      best = { f, x, y };
+      trajectory = [{ x, y }];
+      lossHistory = [{ f, gNorm }];
+      moveAnim = null;
+      lastStep = null;
+    }
+
+    function resetForCurrentFunction(useRandomStart) {
+      setStartSliderRange();
+      if (useRandomStart) {
+        const r = randomStartPoint();
+        setStartSliders(r.x, r.y);
+      } else {
+        const st = currentFunction().start;
+        setStartSliders(st.x, st.y);
+      }
+      buildBackground();
+      const st = currentStart();
+      softReset(st.x, st.y);
+    }
+
+    function resetWithSliderStart() {
+      const st = currentStart();
+      softReset(st.x, st.y);
+    }
+
+    function runOneStep(source) {
+      const s = sliders();
+      const fdef = currentFunction();
+      const d = fdef.domain;
+
+      const oldX = x;
+      const oldY = y;
+      const oldF = fdef.fn(oldX, oldY);
+
+      const rawGrad = fdef.grad(oldX, oldY);
+      let gx = rawGrad.gx;
+      let gy = rawGrad.gy;
+
+      if (s.noise > 0) {
+        gx += randn() * s.noise;
+        gy += randn() * s.noise;
+      }
+
+      const rawNorm = hypot2(gx, gy);
+      let clipScale = 1;
+      if (s.clip > 0 && rawNorm > s.clip) {
+        clipScale = s.clip / rawNorm;
+        gx *= clipScale;
+        gy *= clipScale;
+      }
+      const gradNorm = hypot2(gx, gy);
+
+      const eta = s.lr / (1 + s.decay * stepCount);
+      let dx = 0;
+      let dy = 0;
+
+      const momentumBefore = { x: velocity.x, y: velocity.y };
+      const adamBefore = {
+        mx: adam.mx,
+        my: adam.my,
+        vx: adam.vx,
+        vy: adam.vy
+      };
+
+      let adamCorr = null;
+      if (s.optimizer === 'sgd') {
+        dx = -eta * gx;
+        dy = -eta * gy;
+      } else if (s.optimizer === 'momentum') {
+        velocity.x = s.beta1 * velocity.x - eta * gx;
+        velocity.y = s.beta1 * velocity.y - eta * gy;
+        dx = velocity.x;
+        dy = velocity.y;
+      } else {
+        const t = stepCount + 1;
+        adam.mx = s.beta1 * adam.mx + (1 - s.beta1) * gx;
+        adam.my = s.beta1 * adam.my + (1 - s.beta1) * gy;
+        adam.vx = s.beta2 * adam.vx + (1 - s.beta2) * gx * gx;
+        adam.vy = s.beta2 * adam.vy + (1 - s.beta2) * gy * gy;
+
+        const mxh = adam.mx / (1 - Math.pow(s.beta1, t));
+        const myh = adam.my / (1 - Math.pow(s.beta1, t));
+        const vxh = adam.vx / (1 - Math.pow(s.beta2, t));
+        const vyh = adam.vy / (1 - Math.pow(s.beta2, t));
+
+        adamCorr = { mxh, myh, vxh, vyh, t };
+        dx = -eta * mxh / (Math.sqrt(vxh) + 1e-8);
+        dy = -eta * myh / (Math.sqrt(vyh) + 1e-8);
+      }
+
+      const preClampX = oldX + dx;
+      const preClampY = oldY + dy;
+      const newX = clamp(preClampX, d.xmin, d.xmax);
+      const newY = clamp(preClampY, d.ymin, d.ymax);
+      const clamped = Math.abs(preClampX - newX) > 1e-12 || Math.abs(preClampY - newY) > 1e-12;
+      const newF = fdef.fn(newX, newY);
+
+      x = newX;
+      y = newY;
+      stepCount += 1;
+
+      if (newF < best.f) {
+        best = { f: newF, x, y };
+      }
+
+      trajectory.push({ x, y });
+      if (trajectory.length > maxTrajectory) {
+        trajectory = trajectory.slice(trajectory.length - maxTrajectory);
+      }
+
+      const g1 = fdef.grad(x, y);
+      lossHistory.push({ f: newF, gNorm: hypot2(g1.gx, g1.gy) });
+      if (lossHistory.length > maxHistory) {
+        lossHistory = lossHistory.slice(lossHistory.length - maxHistory);
+      }
+
+      const now = performance.now();
+      moveAnim = {
+        fromX: oldX,
+        fromY: oldY,
+        toX: newX,
+        toY: newY,
+        start: now,
+        duration: Math.min(900, (1000 / Math.max(1, s.speed)) * 0.72)
+      };
+
+      lastStep = {
+        source,
+        start: now,
+        optimizer: s.optimizer,
+        stepNo: stepCount,
+        oldX,
+        oldY,
+        oldF,
+        rawGx: rawGrad.gx,
+        rawGy: rawGrad.gy,
+        gx,
+        gy,
+        rawNorm,
+        gradNorm,
+        clipScale,
+        eta,
+        beta1: s.beta1,
+        beta2: s.beta2,
+        momentumBefore,
+        momentumAfter: { x: velocity.x, y: velocity.y },
+        adamBefore,
+        adamAfter: {
+          mx: adam.mx,
+          my: adam.my,
+          vx: adam.vx,
+          vy: adam.vy
+        },
+        adamCorr,
+        dx,
+        dy,
+        moveNorm: hypot2(dx, dy),
+        preClampX,
+        preClampY,
+        newX,
+        newY,
+        clamped,
+        newF,
+        deltaF: newF - oldF,
+        improved: newF <= oldF
+      };
+    }
+
+    function statusMessage() {
+      if (!lastStep) {
+        return { level: 'warn', text: '再生または1ステップで計算を開始してください。' };
+      }
+      if (!Number.isFinite(lastStep.newF) || lastStep.newF > 1e8) {
+        return {
+          level: 'bad',
+          text: '発散傾向です。学習率を下げるか、勾配クリップを強めてください。'
+        };
+      }
+      if (lastStep.gradNorm < 1e-3) {
+        return {
+          level: 'good',
+          text: '勾配ノルムが小さく、収束に近い状態です。'
+        };
+      }
+      if (lastStep.deltaF > 0) {
+        return {
+          level: 'warn',
+          text: '直前ステップで損失が増加しました。η、β、ノイズを調整してください。'
+        };
+      }
+      return {
+        level: 'good',
+        text: '損失が低下しています。勾配方向と更新方向の関係を確認してください。'
+      };
+    }
+
+    function drawPlot(now) {
+      const w = plot.width;
+      const h = plot.height;
+      const pad = 56;
+      const d = currentFunction().domain;
+
+      const x2px = xv => pad + ((xv - d.xmin) * (w - 2 * pad)) / (d.xmax - d.xmin);
+      const y2py = yv => h - pad - ((yv - d.ymin) * (h - 2 * pad)) / (d.ymax - d.ymin);
+
+      pctx.clearRect(0, 0, w, h);
+      pctx.fillStyle = 'rgba(7,14,30,0.55)';
+      pctx.fillRect(pad, pad, w - 2 * pad, h - 2 * pad);
+
+      if (bgCanvas) {
+        pctx.drawImage(bgCanvas, pad, pad, w - 2 * pad, h - 2 * pad);
+      }
+
+      pctx.strokeStyle = 'rgba(255,255,255,0.10)';
+      pctx.lineWidth = 1;
+      for (let i = 0; i <= 8; i += 1) {
+        const gx = d.xmin + (i * (d.xmax - d.xmin)) / 8;
+        pctx.beginPath();
+        pctx.moveTo(x2px(gx), y2py(d.ymin));
+        pctx.lineTo(x2px(gx), y2py(d.ymax));
+        pctx.stroke();
+      }
+      for (let i = 0; i <= 8; i += 1) {
+        const gy = d.ymin + (i * (d.ymax - d.ymin)) / 8;
+        pctx.beginPath();
+        pctx.moveTo(x2px(d.xmin), y2py(gy));
+        pctx.lineTo(x2px(d.xmax), y2py(gy));
+        pctx.stroke();
+      }
+
+      pctx.strokeStyle = 'rgba(255,255,255,0.35)';
+      pctx.lineWidth = 1.2;
+      if (d.xmin <= 0 && d.xmax >= 0) {
+        pctx.beginPath();
+        pctx.moveTo(x2px(0), y2py(d.ymin));
+        pctx.lineTo(x2px(0), y2py(d.ymax));
+        pctx.stroke();
+      }
+      if (d.ymin <= 0 && d.ymax >= 0) {
+        pctx.beginPath();
+        pctx.moveTo(x2px(d.xmin), y2py(0));
+        pctx.lineTo(x2px(d.xmax), y2py(0));
+        pctx.stroke();
+      }
+
+      for (const o of currentFunction().optima) {
+        const ox = x2px(o.x);
+        const oy = y2py(o.y);
+        pctx.strokeStyle = 'rgba(111,223,167,0.95)';
+        pctx.lineWidth = 2;
+        pctx.beginPath();
+        pctx.moveTo(ox - 5, oy);
+        pctx.lineTo(ox + 5, oy);
+        pctx.stroke();
+        pctx.beginPath();
+        pctx.moveTo(ox, oy - 5);
+        pctx.lineTo(ox, oy + 5);
+        pctx.stroke();
+      }
+
+      if (trajectory.length >= 2) {
+        pctx.strokeStyle = 'rgba(255,225,120,0.96)';
+        pctx.lineWidth = 2.1;
+        pctx.beginPath();
+        pctx.moveTo(x2px(trajectory[0].x), y2py(trajectory[0].y));
+        for (let i = 1; i < trajectory.length; i += 1) {
+          pctx.lineTo(x2px(trajectory[i].x), y2py(trajectory[i].y));
+        }
+        pctx.stroke();
+      }
+
+      if (lastStep && now - lastStep.start < 2400) {
+        const ox = x2px(lastStep.oldX);
+        const oy = y2py(lastStep.oldY);
+
+        pctx.fillStyle = 'rgba(255,208,107,0.96)';
+        pctx.beginPath();
+        pctx.arc(ox, oy, 4.8, 0, Math.PI * 2);
+        pctx.fill();
+
+        pctx.setLineDash([6, 5]);
+        pctx.strokeStyle = 'rgba(255,208,107,0.8)';
+        pctx.lineWidth = 1.2;
+        pctx.beginPath();
+        pctx.moveTo(ox, oy);
+        pctx.lineTo(x2px(lastStep.newX), y2py(lastStep.newY));
+        pctx.stroke();
+        pctx.setLineDash([]);
+
+        const gradScale = 0.18 * Math.min(d.xmax - d.xmin, d.ymax - d.ymin) / Math.max(1e-8, lastStep.gradNorm);
+        const gxTo = lastStep.oldX + lastStep.gx * gradScale;
+        const gyTo = lastStep.oldY + lastStep.gy * gradScale;
+        drawArrow(pctx, ox, oy, x2px(gxTo), y2py(gyTo), 'rgba(255,148,189,0.95)', 2);
+
+        const uxTo = lastStep.oldX + lastStep.dx * 3.0;
+        const uyTo = lastStep.oldY + lastStep.dy * 3.0;
+        drawArrow(pctx, ox, oy, x2px(uxTo), y2py(uyTo), 'rgba(127,214,255,0.95)', 2);
+      }
+
+      const dp = getDisplayPoint(now);
+      pctx.fillStyle = 'rgba(255,142,142,0.97)';
+      pctx.beginPath();
+      pctx.arc(x2px(dp.drawX), y2py(dp.drawY), 5.6, 0, Math.PI * 2);
+      pctx.fill();
+
+      pctx.fillStyle = 'rgba(232,238,255,0.88)';
+      pctx.font = '12px "Hiragino Sans", sans-serif';
+      pctx.fillText(`x:[${d.xmin.toFixed(1)}, ${d.xmax.toFixed(1)}], y:[${d.ymin.toFixed(1)}, ${d.ymax.toFixed(1)}]`, x2px(d.xmin), h - 20);
+    }
+
+    function drawLoss() {
+      const w = lossPlot.width;
+      const h = lossPlot.height;
+      const pad = 42;
+
+      lctx.clearRect(0, 0, w, h);
+      lctx.fillStyle = 'rgba(7,14,30,0.55)';
+      lctx.fillRect(pad, 16, w - 2 * pad, h - 30);
+
+      if (lossHistory.length < 2) {
+        lctx.fillStyle = 'rgba(225,233,255,0.82)';
+        lctx.font = '12px "Hiragino Sans", sans-serif';
+        lctx.fillText('ステップを進めると f(x,y) と ||∇f|| の推移が表示されます。', pad + 8, 38);
+        return;
+      }
+
+      const values = [];
+      for (const e of lossHistory) {
+        values.push(Math.log10(e.f + 1e-8), Math.log10(e.gNorm + 1e-8));
+      }
+      const yMin = Math.min(...values);
+      const yMax = Math.max(...values);
+      const ySpan = Math.max(0.4, yMax - yMin);
+
+      const x2px = i => pad + (i * (w - 2 * pad)) / (lossHistory.length - 1);
+      const y2py = v => (h - 14) - ((v - yMin) * (h - 34)) / ySpan;
+
+      lctx.strokeStyle = 'rgba(255,255,255,0.12)';
+      lctx.lineWidth = 1;
+      for (let i = 0; i <= 4; i += 1) {
+        const yy = yMin + (i * ySpan) / 4;
+        lctx.beginPath();
+        lctx.moveTo(pad, y2py(yy));
+        lctx.lineTo(w - pad, y2py(yy));
+        lctx.stroke();
+      }
+
+      function drawLine(getter, color) {
+        lctx.strokeStyle = color;
+        lctx.lineWidth = 2;
+        lctx.beginPath();
+        for (let i = 0; i < lossHistory.length; i += 1) {
+          const yv = Math.log10(getter(lossHistory[i]) + 1e-8);
+          if (i === 0) lctx.moveTo(x2px(i), y2py(yv));
+          else lctx.lineTo(x2px(i), y2py(yv));
+        }
+        lctx.stroke();
+      }
+
+      drawLine(v => v.f, 'rgba(255,217,116,0.98)');
+      drawLine(v => v.gNorm, 'rgba(159,200,255,0.95)');
+
+      lctx.fillStyle = 'rgba(230,237,255,0.88)';
+      lctx.font = '11px "Hiragino Sans", sans-serif';
+      lctx.fillText('log10(f)', pad + 8, 28);
+      lctx.fillText('log10(||∇f||)', pad + 64, 28);
+      const latest = lossHistory[lossHistory.length - 1];
+      lctx.fillText(`最新: f=${latest.f.toFixed(5)} / ||∇f||=${latest.gNorm.toFixed(5)}`, pad + 8, h - 8);
+    }
+
+    function currentPhase(now) {
+      if (!lastStep) return -1;
+      const elapsed = now - lastStep.start;
+      return Math.min(3, Math.floor(elapsed / (phaseDurationMs / 4)));
+    }
+
+    function updateProcedure(now) {
+      const phaseLabels = [
+        '手順: 1/4 勾配計算中',
+        '手順: 2/4 更新量計算中',
+        '手順: 3/4 座標更新中',
+        '手順: 4/4 損失比較中'
+      ];
+
+      if (!lastStep) {
+        document.getElementById('phasePill').textContent = '手順: 待機中';
+        for (const item of procItems) item.classList.remove('active');
+        document.getElementById('detailGrad').textContent = '-';
+        document.getElementById('detailUpdate').textContent = '-';
+        document.getElementById('detailApply').textContent = '-';
+        document.getElementById('detailCheck').textContent = '-';
+        return;
+      }
+
+      const phase = currentPhase(now);
+      document.getElementById('phasePill').textContent = phaseLabels[Math.max(0, phase)];
+      for (let i = 0; i < procItems.length; i += 1) {
+        procItems[i].classList.toggle('active', i === phase);
+      }
+
+      const gradLines = [
+        `theta_t = (${lastStep.oldX.toFixed(6)}, ${lastStep.oldY.toFixed(6)})`,
+        `f(theta_t) = ${lastStep.oldF.toFixed(8)}`,
+        `grad_raw = (${lastStep.rawGx.toFixed(6)}, ${lastStep.rawGy.toFixed(6)})`,
+        `||grad_raw|| = ${lastStep.rawNorm.toFixed(6)}`
+      ];
+      if (lastStep.clipScale < 0.999999) {
+        gradLines.push(`clip scale = ${lastStep.clipScale.toFixed(6)}`);
+        gradLines.push(`grad_used = (${lastStep.gx.toFixed(6)}, ${lastStep.gy.toFixed(6)})`);
+      } else {
+        gradLines.push(`clip: 未発動`);
+      }
+      gradLines.push(`||grad_used|| = ${lastStep.gradNorm.toFixed(6)}`);
+      document.getElementById('detailGrad').textContent = gradLines.join('\n');
+
+      const updateLines = [];
+      updateLines.push(`eta_t = ${lastStep.eta.toFixed(8)}`);
+      if (lastStep.optimizer === 'sgd') {
+        updateLines.push('optimizer = SGD');
+        updateLines.push(`Delta = -eta_t * grad`);
+      } else if (lastStep.optimizer === 'momentum') {
+        updateLines.push('optimizer = Momentum');
+        updateLines.push(`v_prev = (${lastStep.momentumBefore.x.toFixed(6)}, ${lastStep.momentumBefore.y.toFixed(6)})`);
+        updateLines.push(`v_t = beta1*v_prev - eta_t*grad`);
+        updateLines.push(`v_t = (${lastStep.momentumAfter.x.toFixed(6)}, ${lastStep.momentumAfter.y.toFixed(6)})`);
+      } else {
+        updateLines.push('optimizer = Adam');
+        updateLines.push(`m_t, v_t を指数移動平均で更新`);
+        if (lastStep.adamCorr) {
+          updateLines.push(`m_hat = (${lastStep.adamCorr.mxh.toFixed(6)}, ${lastStep.adamCorr.myh.toFixed(6)})`);
+          updateLines.push(`v_hat = (${lastStep.adamCorr.vxh.toFixed(6)}, ${lastStep.adamCorr.vyh.toFixed(6)})`);
+        }
+      }
+      updateLines.push(`Delta = (${lastStep.dx.toFixed(6)}, ${lastStep.dy.toFixed(6)})`);
+      updateLines.push(`||Delta|| = ${lastStep.moveNorm.toFixed(6)}`);
+      document.getElementById('detailUpdate').textContent = updateLines.join('\n');
+
+      const applyLines = [
+        `candidate = theta_t + Delta = (${lastStep.preClampX.toFixed(6)}, ${lastStep.preClampY.toFixed(6)})`,
+        `theta_{t+1} = (${lastStep.newX.toFixed(6)}, ${lastStep.newY.toFixed(6)})`
+      ];
+      applyLines.push(lastStep.clamped ? '範囲外だったため clamp を適用' : '範囲内のため clamp なし');
+      document.getElementById('detailApply').textContent = applyLines.join('\n');
+
+      const checkLines = [
+        `f_before = ${lastStep.oldF.toFixed(8)}`,
+        `f_after  = ${lastStep.newF.toFixed(8)}`,
+        `Delta f  = ${lastStep.deltaF.toFixed(8)}`,
+        `判定: ${lastStep.improved ? '改善（減少）' : '悪化（増加）'}`,
+        `更新方式: ${lastStep.source === 'manual' ? '手動1ステップ' : '自動再生'}`
+      ];
+      document.getElementById('detailCheck').textContent = checkLines.join('\n');
+    }
+
+    function updateUI(now) {
+      const s = sliders();
+      const fdef = currentFunction();
+      const fNow = fdef.fn(x, y);
+      const g = fdef.grad(x, y);
+      const gNorm = hypot2(g.gx, g.gy);
+
+      document.getElementById('lrVal').textContent = s.lr.toFixed(4);
+      document.getElementById('decayVal').textContent = s.decay.toFixed(3);
+      document.getElementById('beta1Val').textContent = s.beta1.toFixed(2);
+      document.getElementById('beta2Val').textContent = s.beta2.toFixed(3);
+      document.getElementById('clipVal').textContent = s.clip.toFixed(2);
+      document.getElementById('noiseVal').textContent = s.noise.toFixed(2);
+      document.getElementById('speedVal').textContent = `${s.speed}`;
+      document.getElementById('startXVal').textContent = parseFloat(startXRange.value).toFixed(2);
+      document.getElementById('startYVal').textContent = parseFloat(startYRange.value).toFixed(2);
+
+      document.getElementById('modePill').textContent = running ? 'モード: 学習中' : 'モード: 停止中';
+      document.getElementById('statePill').textContent = running ? '状態: 計算中' : '状態: 一時停止';
+
+      document.getElementById('stepVal').textContent = `${stepCount}`;
+      document.getElementById('fNowVal').textContent = fNow.toFixed(6);
+      document.getElementById('gNormVal').textContent = gNorm.toFixed(6);
+      document.getElementById('xyNowVal').textContent = `(${x.toFixed(4)}, ${y.toFixed(4)})`;
+      document.getElementById('etaVal').textContent = currentEta().toFixed(6);
+      document.getElementById('deltaFVal').textContent = lastStep ? lastStep.deltaF.toFixed(6) : '-';
+      document.getElementById('moveVal').textContent = lastStep ? lastStep.moveNorm.toFixed(6) : '-';
+      document.getElementById('bestVal').textContent = Number.isFinite(best.f) ? best.f.toFixed(6) : '-';
+      document.getElementById('bestXYVal').textContent = Number.isFinite(best.f) ? `(${best.x.toFixed(4)}, ${best.y.toFixed(4)})` : '-';
+
+      const st = statusMessage();
+      const statusBox = document.getElementById('statusBox');
+      statusBox.className = `status ${st.level}`;
+      statusBox.textContent = `評価: ${st.text}`;
+
+      beta1Range.disabled = s.optimizer === 'sgd';
+      beta2Range.disabled = s.optimizer !== 'adam';
+
+      updateProcedure(now);
+    }
+
+    function frame(now) {
+      const dt = now - lastT;
+      lastT = now;
+
+      if (running) {
+        accMs += dt;
+        const interval = 1000 / Math.max(1, sliders().speed);
+        let guard = 0;
+        while (accMs >= interval && guard < 360) {
+          runOneStep('auto');
+          accMs -= interval;
+          guard += 1;
+        }
+      } else {
+        accMs = 0;
+      }
+
+      drawPlot(now);
+      drawLoss();
+      updateUI(now);
+      requestAnimationFrame(frame);
+    }
+
+    document.getElementById('btnPlay').addEventListener('click', () => {
+      running = true;
+    });
+
+    document.getElementById('btnPause').addEventListener('click', () => {
+      running = false;
+    });
+
+    document.getElementById('btnStep').addEventListener('click', () => {
+      running = false;
+      runOneStep('manual');
+    });
+
+    document.getElementById('btnReset').addEventListener('click', () => {
+      running = false;
+      resetWithSliderStart();
+    });
+
+    document.getElementById('btnRandom').addEventListener('click', () => {
+      running = false;
+      const r = randomStartPoint();
+      setStartSliders(r.x, r.y);
+      resetWithSliderStart();
+    });
+
+    fnSelect.addEventListener('change', () => {
+      running = false;
+      resetForCurrentFunction(false);
+    });
+
+    optSelect.addEventListener('change', () => {
+      running = false;
+      resetWithSliderStart();
+    });
+
+    startXRange.addEventListener('input', () => {
+      document.getElementById('startXVal').textContent = parseFloat(startXRange.value).toFixed(2);
+    });
+
+    startYRange.addEventListener('input', () => {
+      document.getElementById('startYVal').textContent = parseFloat(startYRange.value).toFixed(2);
+    });
+
+    startXRange.addEventListener('change', () => {
+      running = false;
+      resetWithSliderStart();
+    });
+
+    startYRange.addEventListener('change', () => {
+      running = false;
+      resetWithSliderStart();
+    });
+
+    const liveRanges = [lrRange, decayRange, beta1Range, beta2Range, clipRange, noiseRange, speedRange, startXRange, startYRange];
+    for (const r of liveRanges) {
+      r.addEventListener('input', () => updateUI(performance.now()));
+    }
+
+    resetForCurrentFunction(false);
+    requestAnimationFrame(frame);
+  })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,765 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>MNIST t-SNE 2次元埋め込みビュー</title>
+  <style>
+    :root {
+      --bg:#081326;
+      --panel:#0f1f3e;
+      --text:#e9efff;
+      --muted:#aab8de;
+      --line:#2b406e;
+      --good:#67d79a;
+      --warn:#ffd06b;
+      --bad:#ff8787;
+      --accent:#73a7ff;
+    }
+
+    * { box-sizing:border-box; }
+
+    body {
+      margin:0;
+      min-height:100vh;
+      color:var(--text);
+      font-family:"Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif;
+      background:
+        radial-gradient(circle at 12% 14%, rgba(115,167,255,0.17), transparent 34%),
+        radial-gradient(circle at 88% 10%, rgba(111,223,167,0.16), transparent 28%),
+        linear-gradient(180deg, #060f1d, var(--bg));
+    }
+
+    .top-nav {
+      max-width:1220px;
+      margin:14px auto 0;
+      padding:0 18px;
+      display:flex;
+      gap:14px;
+      flex-wrap:wrap;
+    }
+
+    .top-link {
+      color:var(--muted);
+      text-decoration:none;
+      font-size:13px;
+    }
+
+    .top-link:hover {
+      color:var(--text);
+      text-decoration:underline;
+    }
+
+    .wrap {
+      max-width:1220px;
+      margin:0 auto;
+      padding:16px 18px 24px;
+      display:grid;
+      grid-template-columns:1.2fr 0.8fr;
+      gap:16px;
+    }
+
+    .card {
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,0.09);
+      background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+      padding:14px;
+      box-shadow:0 15px 32px rgba(0,0,0,0.35);
+    }
+
+    h1 {
+      margin:0 0 8px;
+      font-size:19px;
+      line-height:1.35;
+    }
+
+    .sub {
+      margin:0 0 12px;
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.65;
+    }
+
+    .pill {
+      display:inline-block;
+      padding:2px 8px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,0.13);
+      background:rgba(255,255,255,0.05);
+      color:var(--muted);
+      font-size:12px;
+    }
+
+    canvas {
+      width:100%;
+      height:auto;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,0.09);
+      background:rgba(4,10,24,0.45);
+    }
+
+    .legend {
+      margin-top:9px;
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      font-size:12px;
+      color:var(--muted);
+    }
+
+    .dot {
+      display:inline-block;
+      width:10px;
+      height:10px;
+      border-radius:50%;
+      margin-right:6px;
+      vertical-align:middle;
+    }
+
+    .row {
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      align-items:center;
+    }
+
+    button {
+      cursor:pointer;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,0.16);
+      background:rgba(255,255,255,0.06);
+      color:var(--text);
+      font-size:13px;
+      padding:8px 10px;
+      transition:background .2s ease;
+    }
+
+    button:hover { background:rgba(255,255,255,0.11); }
+
+    button.primary {
+      border-color:rgba(115,167,255,0.58);
+      background:rgba(115,167,255,0.21);
+    }
+
+    button.primary:hover { background:rgba(115,167,255,0.28); }
+
+    .slider {
+      margin:10px 0;
+      display:grid;
+      grid-template-columns:140px 1fr 84px;
+      gap:10px;
+      align-items:center;
+      font-size:13px;
+    }
+
+    input[type="range"] {
+      width:100%;
+      accent-color:#75a8ff;
+    }
+
+    .hr {
+      height:1px;
+      margin:12px 0;
+      background:rgba(255,255,255,0.11);
+    }
+
+    .kv {
+      display:grid;
+      grid-template-columns:1fr auto;
+      gap:8px 10px;
+      font-size:13px;
+    }
+
+    .kv div:nth-child(odd) { color:var(--muted); }
+
+    .status {
+      margin-top:8px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,0.1);
+      background:rgba(0,0,0,0.2);
+      padding:10px;
+      font-size:13px;
+      line-height:1.55;
+    }
+
+    .status.good {
+      border-color:rgba(103,215,154,0.52);
+      background:rgba(103,215,154,0.12);
+    }
+
+    .status.warn {
+      border-color:rgba(255,208,107,0.52);
+      background:rgba(255,208,107,0.12);
+    }
+
+    .status.bad {
+      border-color:rgba(255,135,135,0.55);
+      background:rgba(255,135,135,0.12);
+    }
+
+    .note {
+      margin:10px 0 0;
+      color:var(--muted);
+      font-size:12px;
+      line-height:1.6;
+    }
+
+    #tooltip {
+      position:fixed;
+      pointer-events:none;
+      display:none;
+      z-index:20;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,0.16);
+      background:rgba(5, 10, 24, 0.94);
+      padding:8px;
+      width:156px;
+      box-shadow:0 10px 25px rgba(0,0,0,0.4);
+      font-size:12px;
+      color:var(--text);
+    }
+
+    #tooltip canvas {
+      width:112px;
+      height:112px;
+      border-radius:8px;
+      border:1px solid rgba(255,255,255,0.12);
+      image-rendering: pixelated;
+      display:block;
+      margin:6px auto 0;
+      background:#000;
+    }
+
+    @media (max-width: 990px) {
+      .wrap { grid-template-columns:1fr; }
+      .slider { grid-template-columns:112px 1fr 84px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="top-nav">
+    <a class="top-link" href="index.html">← 新卒AI研修トップへ戻る</a>
+  </div>
+
+  <div class="wrap">
+    <section class="card">
+      <h1>MNIST 1000枚 t-SNE 埋め込みビュー</h1>
+      <p class="sub">
+        MNISTの先頭1000枚を読み込み、
+        <span class="pill">ランダム射影 (784→50次元)</span> 後に
+        <span class="pill">t-SNEで2次元へ埋め込み</span> します。
+        点にマウスオーバーすると元の28x28画像を表示します。
+      </p>
+
+      <canvas id="plot" width="880" height="600"></canvas>
+
+      <div class="legend" style="margin-top:10px;">
+        <span><span class="dot" style="background:#5ea0ff"></span>数字 0</span>
+        <span><span class="dot" style="background:#ff7f7f"></span>数字 1</span>
+        <span><span class="dot" style="background:#7ee2a8"></span>数字 2</span>
+        <span><span class="dot" style="background:#ffd36d"></span>数字 3</span>
+        <span><span class="dot" style="background:#d59bff"></span>数字 4</span>
+        <span><span class="dot" style="background:#87dcff"></span>数字 5</span>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="row" style="justify-content:space-between;">
+        <div style="font-size:14px; font-weight:700;">操作パネル</div>
+        <div class="pill" id="modePill">状態: 待機中</div>
+      </div>
+
+      <div class="row" style="margin-top:10px;">
+        <button class="primary" id="btnRun">データ読込 + t-SNE実行</button>
+        <button id="btnStop">停止</button>
+        <button id="btnRedraw">再描画</button>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="slider">
+        <div>perplexity</div>
+        <input id="ppRange" type="range" min="5" max="60" step="1" value="30" />
+        <div id="ppVal">30</div>
+      </div>
+
+      <div class="slider">
+        <div>学習率 epsilon</div>
+        <input id="epsRange" type="range" min="4" max="25" step="1" value="10" />
+        <div id="epsVal">10</div>
+      </div>
+
+      <div class="slider">
+        <div>反復回数</div>
+        <input id="iterRange" type="range" min="150" max="900" step="10" value="420" />
+        <div id="iterVal">420</div>
+      </div>
+
+      <div class="slider">
+        <div>点サイズ</div>
+        <input id="ptRange" type="range" min="1.2" max="6.0" step="0.1" value="2.6" />
+        <div id="ptVal">2.6</div>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="kv">
+        <div>データ件数</div><div id="nVal">-</div>
+        <div>進捗</div><div id="progressVal">-</div>
+        <div>最新コスト</div><div id="costVal">-</div>
+        <div>実行時間</div><div id="timeVal">-</div>
+        <div>ホバー中インデックス</div><div id="hoverVal">-</div>
+      </div>
+
+      <div id="statusBox" class="status">評価: まだ実行されていません。</div>
+
+      <p class="note">
+        t-SNEは毎回ランダム初期化されるため、同じ設定でも散布図の形は回転・反転・位置ずれします。
+      </p>
+    </section>
+  </div>
+
+  <div id="tooltip">
+    <div id="tipText">-</div>
+    <canvas id="tipCanvas" width="112" height="112"></canvas>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/gh/karpathy/tsnejs/tsne.js"></script>
+  <script>
+  (() => {
+    const MNIST_IMAGE_URL = 'https://storage.googleapis.com/learnjs-data/model-builder/mnist_images.png';
+    const MNIST_LABEL_URL = 'https://storage.googleapis.com/learnjs-data/model-builder/mnist_labels_uint8';
+
+    const SAMPLE_COUNT = 1000;
+    const RAW_DIM = 28 * 28;
+    const PROJ_DIM = 50;
+
+    const plot = document.getElementById('plot');
+    const ctx = plot.getContext('2d');
+
+    const tooltip = document.getElementById('tooltip');
+    const tipText = document.getElementById('tipText');
+    const tipCanvas = document.getElementById('tipCanvas');
+    const tipCtx = tipCanvas.getContext('2d');
+    const digitCanvas = document.createElement('canvas');
+    digitCanvas.width = 28;
+    digitCanvas.height = 28;
+    const digitCtx = digitCanvas.getContext('2d');
+
+    const btnRun = document.getElementById('btnRun');
+    const btnStop = document.getElementById('btnStop');
+    const btnRedraw = document.getElementById('btnRedraw');
+
+    const ppRange = document.getElementById('ppRange');
+    const epsRange = document.getElementById('epsRange');
+    const iterRange = document.getElementById('iterRange');
+    const ptRange = document.getElementById('ptRange');
+
+    const labelPalette = [
+      '#5ea0ff', '#ff7f7f', '#7ee2a8', '#ffd36d', '#d59bff',
+      '#87dcff', '#ffa86b', '#91a1ff', '#6de2d3', '#ff9ed2'
+    ];
+
+    let samples = null;
+    let features = null;
+    let embedding = null;
+    let screenPoints = [];
+    let hovered = -1;
+    let lastHover = -1;
+
+    let runToken = 0;
+    let running = false;
+    let lastCost = NaN;
+    let startTime = 0;
+
+    function seededRand(seed) {
+      let s = seed >>> 0;
+      return () => {
+        s = (1664525 * s + 1013904223) >>> 0;
+        return s / 4294967296;
+      };
+    }
+
+    function buildProjectionMatrix(inDim, outDim, seed = 12345) {
+      const rnd = seededRand(seed);
+      const scale = 1 / Math.sqrt(inDim);
+      const mat = new Array(outDim);
+      for (let j = 0; j < outDim; j += 1) {
+        const row = new Float32Array(inDim);
+        for (let k = 0; k < inDim; k += 1) {
+          row[k] = (rnd() < 0.5 ? -1 : 1) * scale;
+        }
+        mat[j] = row;
+      }
+      return mat;
+    }
+
+    function argmax10(labels, offset) {
+      let best = 0;
+      let bestVal = labels[offset];
+      for (let j = 1; j < 10; j += 1) {
+        const v = labels[offset + j];
+        if (v > bestVal) {
+          bestVal = v;
+          best = j;
+        }
+      }
+      return best;
+    }
+
+    async function loadImage(url) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error('画像の読み込みに失敗しました'));
+        img.src = url;
+      });
+    }
+
+    async function loadDataset() {
+      setStatus('warn', 'MNISTデータを読み込み中です...');
+      setMode('状態: データ読込中');
+
+      const [img, labelsBuf] = await Promise.all([
+        loadImage(MNIST_IMAGE_URL),
+        fetch(MNIST_LABEL_URL).then(r => {
+          if (!r.ok) throw new Error('ラベルの取得に失敗しました');
+          return r.arrayBuffer();
+        })
+      ]);
+
+      const labels = new Uint8Array(labelsBuf);
+      const srcCanvas = document.createElement('canvas');
+      srcCanvas.width = RAW_DIM;
+      srcCanvas.height = SAMPLE_COUNT;
+      const sctx = srcCanvas.getContext('2d');
+
+      sctx.drawImage(img, 0, 0, RAW_DIM, SAMPLE_COUNT, 0, 0, RAW_DIM, SAMPLE_COUNT);
+      const rgba = sctx.getImageData(0, 0, RAW_DIM, SAMPLE_COUNT).data;
+
+      const parsed = new Array(SAMPLE_COUNT);
+      for (let i = 0; i < SAMPLE_COUNT; i += 1) {
+        const pixels = new Uint8Array(RAW_DIM);
+        const rowBase = i * RAW_DIM * 4;
+        for (let p = 0; p < RAW_DIM; p += 1) {
+          pixels[p] = rgba[rowBase + p * 4];
+        }
+        parsed[i] = {
+          index: i,
+          label: argmax10(labels, i * 10),
+          pixels
+        };
+      }
+      samples = parsed;
+
+      setStatus('good', 'MNIST 1000件の読み込みが完了しました。次に特徴量を準備します。');
+      document.getElementById('nVal').textContent = `${SAMPLE_COUNT}`;
+    }
+
+    function projectFeatures() {
+      const proj = buildProjectionMatrix(RAW_DIM, PROJ_DIM, 20260219);
+      const out = new Array(SAMPLE_COUNT);
+
+      for (let i = 0; i < SAMPLE_COUNT; i += 1) {
+        const pix = samples[i].pixels;
+
+        let mean = 0;
+        for (let k = 0; k < RAW_DIM; k += 1) {
+          mean += pix[k];
+        }
+        mean /= RAW_DIM;
+
+        const vec = new Array(PROJ_DIM);
+        for (let j = 0; j < PROJ_DIM; j += 1) {
+          const row = proj[j];
+          let sum = 0;
+          for (let k = 0; k < RAW_DIM; k += 1) {
+            sum += ((pix[k] - mean) / 255) * row[k];
+          }
+          vec[j] = sum;
+        }
+        out[i] = vec;
+      }
+      return out;
+    }
+
+    function canvasCoordsFromEmbedding(Y) {
+      const pad = 42;
+      const xs = Y.map(v => v[0]);
+      const ys = Y.map(v => v[1]);
+      let xMin = Math.min(...xs);
+      let xMax = Math.max(...xs);
+      let yMin = Math.min(...ys);
+      let yMax = Math.max(...ys);
+
+      if (Math.abs(xMax - xMin) < 1e-9) {
+        xMin -= 1;
+        xMax += 1;
+      }
+      if (Math.abs(yMax - yMin) < 1e-9) {
+        yMin -= 1;
+        yMax += 1;
+      }
+
+      const x2px = x => pad + ((x - xMin) * (plot.width - 2 * pad)) / (xMax - xMin);
+      const y2py = y => plot.height - pad - ((y - yMin) * (plot.height - 2 * pad)) / (yMax - yMin);
+
+      return Y.map(v => ({ x: x2px(v[0]), y: y2py(v[1]) }));
+    }
+
+    function drawBase() {
+      ctx.clearRect(0, 0, plot.width, plot.height);
+      ctx.fillStyle = 'rgba(7,14,30,0.55)';
+      ctx.fillRect(36, 36, plot.width - 72, plot.height - 72);
+
+      ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+      ctx.lineWidth = 1;
+      for (let i = 0; i <= 8; i += 1) {
+        const x = 36 + ((plot.width - 72) * i) / 8;
+        ctx.beginPath();
+        ctx.moveTo(x, 36);
+        ctx.lineTo(x, plot.height - 36);
+        ctx.stroke();
+      }
+      for (let i = 0; i <= 8; i += 1) {
+        const y = 36 + ((plot.height - 72) * i) / 8;
+        ctx.beginPath();
+        ctx.moveTo(36, y);
+        ctx.lineTo(plot.width - 36, y);
+        ctx.stroke();
+      }
+    }
+
+    function drawScatter() {
+      drawBase();
+
+      if (!embedding || !samples) {
+        ctx.fillStyle = 'rgba(230,237,255,0.88)';
+        ctx.font = '14px "Hiragino Sans", sans-serif';
+        ctx.fillText('「データ読込 + t-SNE実行」を押すと埋め込みを開始します。', 52, 62);
+        return;
+      }
+
+      screenPoints = canvasCoordsFromEmbedding(embedding);
+      const ptSize = parseFloat(ptRange.value);
+
+      for (let i = 0; i < screenPoints.length; i += 1) {
+        const p = screenPoints[i];
+        const label = samples[i].label;
+        ctx.fillStyle = labelPalette[label % labelPalette.length];
+        ctx.globalAlpha = 0.85;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, ptSize, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+
+      if (hovered >= 0) {
+        const hp = screenPoints[hovered];
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(hp.x, hp.y, ptSize + 3, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      ctx.fillStyle = 'rgba(230,237,255,0.88)';
+      ctx.font = '12px "Hiragino Sans", sans-serif';
+      ctx.fillText('点にマウスオーバーすると元画像を表示します', 50, plot.height - 18);
+    }
+
+    function renderDigitToTooltip(index) {
+      if (index < 0 || !samples) return;
+      if (index === lastHover) return;
+      lastHover = index;
+
+      const pixels = samples[index].pixels;
+      const image = digitCtx.createImageData(28, 28);
+
+      for (let i = 0; i < RAW_DIM; i += 1) {
+        const v = pixels[i];
+        const k = i * 4;
+        image.data[k] = v;
+        image.data[k + 1] = v;
+        image.data[k + 2] = v;
+        image.data[k + 3] = 255;
+      }
+      digitCtx.putImageData(image, 0, 0);
+
+      tipCtx.imageSmoothingEnabled = false;
+      tipCtx.clearRect(0, 0, tipCanvas.width, tipCanvas.height);
+      tipCtx.drawImage(digitCanvas, 0, 0, 28, 28, 0, 0, tipCanvas.width, tipCanvas.height);
+
+      tipText.textContent = `index=${samples[index].index}, label=${samples[index].label}`;
+      document.getElementById('hoverVal').textContent = `${samples[index].index} (label ${samples[index].label})`;
+    }
+
+    function findNearestPoint(mx, my, radius = 11) {
+      let best = -1;
+      let bestDist = radius * radius;
+      for (let i = 0; i < screenPoints.length; i += 1) {
+        const dx = screenPoints[i].x - mx;
+        const dy = screenPoints[i].y - my;
+        const d2 = dx * dx + dy * dy;
+        if (d2 < bestDist) {
+          bestDist = d2;
+          best = i;
+        }
+      }
+      return best;
+    }
+
+    function hideTooltip() {
+      hovered = -1;
+      lastHover = -1;
+      tooltip.style.display = 'none';
+      document.getElementById('hoverVal').textContent = '-';
+      drawScatter();
+    }
+
+    function showTooltip(index, clientX, clientY) {
+      hovered = index;
+      renderDigitToTooltip(index);
+      tooltip.style.display = 'block';
+      tooltip.style.left = `${clientX + 14}px`;
+      tooltip.style.top = `${clientY + 14}px`;
+      drawScatter();
+    }
+
+    function setMode(text) {
+      document.getElementById('modePill').textContent = text;
+    }
+
+    function setStatus(level, text) {
+      const el = document.getElementById('statusBox');
+      el.className = `status ${level}`;
+      el.textContent = `評価: ${text}`;
+    }
+
+    function uiValues() {
+      return {
+        perplexity: parseInt(ppRange.value, 10),
+        epsilon: parseInt(epsRange.value, 10),
+        iterations: parseInt(iterRange.value, 10)
+      };
+    }
+
+    function updateSliderLabels() {
+      document.getElementById('ppVal').textContent = ppRange.value;
+      document.getElementById('epsVal').textContent = epsRange.value;
+      document.getElementById('iterVal').textContent = iterRange.value;
+      document.getElementById('ptVal').textContent = parseFloat(ptRange.value).toFixed(1);
+    }
+
+    async function yieldFrame() {
+      return new Promise(resolve => requestAnimationFrame(resolve));
+    }
+
+    async function runTsne() {
+      if (running) return;
+      runToken += 1;
+      const token = runToken;
+      running = true;
+      startTime = performance.now();
+      lastCost = NaN;
+
+      setMode('状態: 実行中');
+      setStatus('warn', '計算を開始しています...');
+      document.getElementById('progressVal').textContent = '0%';
+      document.getElementById('costVal').textContent = '-';
+      document.getElementById('timeVal').textContent = '-';
+
+      try {
+        if (!samples) {
+          await loadDataset();
+          if (token !== runToken) return;
+        }
+
+        setStatus('warn', '特徴量を準備しています (784→50)...');
+        features = projectFeatures();
+        if (token !== runToken) return;
+
+        const cfg = uiValues();
+        const model = new tsnejs.tSNE({
+          dim: 2,
+          perplexity: cfg.perplexity,
+          epsilon: cfg.epsilon
+        });
+        model.initDataRaw(features);
+
+        setStatus('warn', 't-SNE反復を実行中です...');
+
+        for (let i = 0; i < cfg.iterations; i += 1) {
+          if (token !== runToken) return;
+          lastCost = model.step();
+
+          if (i % 3 === 0 || i === cfg.iterations - 1) {
+            embedding = model.getSolution();
+            drawScatter();
+            document.getElementById('progressVal').textContent = `${((i + 1) * 100 / cfg.iterations).toFixed(1)}%`;
+            document.getElementById('costVal').textContent = Number.isFinite(lastCost) ? lastCost.toFixed(4) : '-';
+            document.getElementById('timeVal').textContent = `${((performance.now() - startTime) / 1000).toFixed(1)}s`;
+            await yieldFrame();
+          }
+        }
+
+        if (token !== runToken) return;
+
+        setMode('状態: 完了');
+        setStatus('good', '埋め込みが完了しました。点にマウスオーバーして元画像を確認してください。');
+      } catch (err) {
+        setMode('状態: エラー');
+        setStatus('bad', `エラー: ${err.message || err}`);
+      } finally {
+        if (token === runToken) {
+          running = false;
+        }
+      }
+    }
+
+    btnRun.addEventListener('click', () => {
+      runTsne();
+    });
+
+    btnStop.addEventListener('click', () => {
+      runToken += 1;
+      running = false;
+      setMode('状態: 停止中');
+      setStatus('warn', '実行を停止しました。');
+    });
+
+    btnRedraw.addEventListener('click', () => {
+      drawScatter();
+    });
+
+    plot.addEventListener('mousemove', (e) => {
+      if (!embedding || !screenPoints.length) return;
+      const rect = plot.getBoundingClientRect();
+      const x = ((e.clientX - rect.left) * plot.width) / rect.width;
+      const y = ((e.clientY - rect.top) * plot.height) / rect.height;
+      const idx = findNearestPoint(x, y);
+      if (idx < 0) {
+        hideTooltip();
+      } else {
+        showTooltip(idx, e.clientX, e.clientY);
+      }
+    });
+
+    plot.addEventListener('mouseleave', hideTooltip);
+
+    [ppRange, epsRange, iterRange].forEach(el => {
+      el.addEventListener('input', updateSliderLabels);
+    });
+
+    ptRange.addEventListener('input', () => {
+      updateSliderLabels();
+      drawScatter();
+    });
+
+    updateSliderLabels();
+    drawScatter();
+  })();
+  </script>
+</body>
+</html>

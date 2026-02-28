@@ -1,0 +1,1002 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>階層クラスタリング（Agglomerative）シミュレータ</title>
+  <style>
+    :root {
+      --bg:#081326;
+      --panel:#0f1f3e;
+      --text:#e9efff;
+      --muted:#aab8de;
+      --line:#2b406e;
+      --warn:#ffd06b;
+      --good:#67d79a;
+      --bad:#ff8787;
+      --accent:#73a7ff;
+    }
+
+    * { box-sizing:border-box; }
+
+    body {
+      margin:0;
+      min-height:100vh;
+      color:var(--text);
+      font-family:"Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif;
+      background:
+        radial-gradient(circle at 12% 14%, rgba(115,167,255,0.17), transparent 34%),
+        radial-gradient(circle at 88% 10%, rgba(111,223,167,0.16), transparent 28%),
+        linear-gradient(180deg, #060f1d, var(--bg));
+    }
+
+    .top-nav {
+      max-width:1220px;
+      margin:14px auto 0;
+      padding:0 18px;
+      display:flex;
+      gap:14px;
+      flex-wrap:wrap;
+    }
+
+    .top-link {
+      color:var(--muted);
+      text-decoration:none;
+      font-size:13px;
+    }
+
+    .top-link:hover {
+      color:var(--text);
+      text-decoration:underline;
+    }
+
+    .wrap {
+      max-width:1220px;
+      margin:0 auto;
+      padding:16px 18px 24px;
+      display:grid;
+      grid-template-columns:1.22fr 0.78fr;
+      gap:16px;
+    }
+
+    .card {
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,0.09);
+      background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+      padding:14px;
+      box-shadow:0 15px 32px rgba(0,0,0,0.35);
+    }
+
+    h1 {
+      margin:0 0 8px;
+      font-size:19px;
+      line-height:1.35;
+    }
+
+    .sub {
+      margin:0;
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.65;
+    }
+
+    .pill {
+      display:inline-block;
+      padding:2px 8px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,0.13);
+      background:rgba(255,255,255,0.05);
+      color:var(--muted);
+      font-size:12px;
+    }
+
+    .formula {
+      margin-top:10px;
+      border-radius:9px;
+      border:1px solid rgba(255,255,255,0.1);
+      background:rgba(8,16,32,0.52);
+      padding:9px;
+      color:#dce5ff;
+      font-size:12px;
+      line-height:1.6;
+      font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      white-space:pre-wrap;
+    }
+
+    .desc {
+      margin-top:10px;
+      border-radius:9px;
+      border:1px solid rgba(255,255,255,0.1);
+      background:rgba(255,255,255,0.03);
+      padding:9px;
+      font-size:12px;
+      line-height:1.6;
+      color:#d4deff;
+    }
+
+    canvas {
+      width:100%;
+      height:auto;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,0.09);
+      background:rgba(4,10,24,0.45);
+    }
+
+    .legend {
+      margin-top:9px;
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      font-size:12px;
+      color:var(--muted);
+    }
+
+    .dot {
+      display:inline-block;
+      width:10px;
+      height:10px;
+      border-radius:50%;
+      margin-right:6px;
+      vertical-align:middle;
+    }
+
+    .row {
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      align-items:center;
+    }
+
+    button {
+      cursor:pointer;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,0.16);
+      background:rgba(255,255,255,0.06);
+      color:var(--text);
+      font-size:13px;
+      padding:8px 10px;
+      transition:background .2s ease;
+    }
+
+    button:hover { background:rgba(255,255,255,0.11); }
+
+    button.primary {
+      border-color:rgba(115,167,255,0.58);
+      background:rgba(115,167,255,0.21);
+    }
+
+    button.primary:hover { background:rgba(115,167,255,0.28); }
+
+    .selectrow {
+      display:grid;
+      grid-template-columns:120px 1fr;
+      gap:10px;
+      margin:8px 0;
+      align-items:center;
+      font-size:13px;
+    }
+
+    select {
+      width:100%;
+      border-radius:9px;
+      border:1px solid rgba(255,255,255,0.15);
+      background:rgba(255,255,255,0.06);
+      color:var(--text);
+      padding:7px 8px;
+      font-size:13px;
+    }
+
+    .slider {
+      margin:10px 0;
+      display:grid;
+      grid-template-columns:140px 1fr 84px;
+      gap:10px;
+      align-items:center;
+      font-size:13px;
+    }
+
+    input[type="range"] { width:100%; accent-color:#75a8ff; }
+
+    .hr {
+      height:1px;
+      margin:12px 0;
+      background:rgba(255,255,255,0.11);
+    }
+
+    .kv {
+      display:grid;
+      grid-template-columns:1fr auto;
+      gap:8px 10px;
+      font-size:13px;
+    }
+
+    .kv div:nth-child(odd) { color:var(--muted); }
+
+    .status {
+      margin-top:8px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,0.1);
+      background:rgba(0,0,0,0.2);
+      padding:10px;
+      font-size:13px;
+      line-height:1.55;
+    }
+
+    .status.good {
+      border-color:rgba(103,215,154,0.52);
+      background:rgba(103,215,154,0.12);
+    }
+
+    .status.warn {
+      border-color:rgba(255,208,107,0.52);
+      background:rgba(255,208,107,0.12);
+    }
+
+    .detail {
+      margin-top:8px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,0.09);
+      background:rgba(2,8,20,0.55);
+      padding:8px;
+      color:#d8e2ff;
+      font-size:12px;
+      font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      white-space:pre-wrap;
+      max-height:180px;
+      overflow:auto;
+    }
+
+    .mini-title {
+      margin:10px 0 6px;
+      color:var(--muted);
+      font-size:13px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+    }
+
+    @media (max-width: 990px) {
+      .wrap { grid-template-columns:1fr; }
+      .slider { grid-template-columns:112px 1fr 84px; }
+      .selectrow { grid-template-columns:100px 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="top-nav">
+    <a class="top-link" href="clustering-hub.html">← クラスタリングハブへ戻る</a>
+    <a class="top-link" href="index.html">研修トップへ戻る</a>
+  </div>
+
+  <div class="wrap">
+    <section class="card">
+      <h1>階層クラスタリング（Agglomerative）シミュレータ</h1>
+      <p class="sub">
+        各点を1クラスタとして開始し、最も近いクラスタ同士を順番にマージします。
+        linkage の違いで「何を近いとみなすか」が変わります。
+      </p>
+
+      <div class="formula">linkage 距離
+single:   d(A,B) = min_{a∈A,b∈B} dist(a,b)
+complete: d(A,B) = max_{a∈A,b∈B} dist(a,b)
+average:  d(A,B) = mean_{a∈A,b∈B} dist(a,b)
+
+反復
+(A*, B*) = argmin_{A!=B} d(A,B)
+A* と B* をマージし、目標クラスタ数 K になるまで続ける</div>
+
+      <div class="desc">
+        <b>パラメータ説明</b><br>
+        `linkage` はクラスタ間距離の定義です。`single` は鎖状につながりやすく、
+        `complete` はコンパクトな塊を好み、`average` はその中間です。
+        `目標K` はマージ停止条件で、クラスタ木をどこで切るかに相当します。
+      </div>
+
+      <canvas id="plot" width="860" height="500"></canvas>
+      <div class="legend" id="legend"></div>
+
+      <div class="mini-title">
+        <span>マージ距離の推移</span>
+        <span class="pill" id="modePill">モード: 実行中</span>
+      </div>
+      <canvas id="mergePlot" width="860" height="190"></canvas>
+    </section>
+
+    <section class="card">
+      <div class="row" style="justify-content:space-between;">
+        <div style="font-size:14px; font-weight:700;">操作パネル</div>
+        <div class="pill" id="statePill">状態: 計算中</div>
+      </div>
+
+      <div class="row" style="margin-top:10px;">
+        <button class="primary" id="btnPlay">再生</button>
+        <button id="btnPause">停止</button>
+        <button id="btnStep">1ステップ</button>
+        <button id="btnReset">マージを最初から</button>
+        <button id="btnNew">データ再生成</button>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="selectrow">
+        <div>データ形状</div>
+        <select id="datasetType">
+          <option value="blobs">ガウス塊</option>
+          <option value="rings">同心円</option>
+          <option value="moons">2つの月</option>
+        </select>
+      </div>
+
+      <div class="selectrow">
+        <div>linkage</div>
+        <select id="linkageType">
+          <option value="single">single</option>
+          <option value="complete">complete</option>
+          <option value="average">average</option>
+        </select>
+      </div>
+
+      <div class="slider">
+        <div>目標クラスタ K</div>
+        <input id="targetKRange" type="range" min="2" max="20" step="1" value="4" />
+        <div id="targetKVal">4</div>
+      </div>
+
+      <div class="slider">
+        <div>更新/秒</div>
+        <input id="speedRange" type="range" min="1" max="20" step="1" value="5" />
+        <div id="speedVal">5</div>
+      </div>
+
+      <div class="slider">
+        <div>点の数</div>
+        <input id="countRange" type="range" min="12" max="140" step="2" value="60" />
+        <div id="countVal">60</div>
+      </div>
+
+      <div class="slider">
+        <div>生成クラスタ数</div>
+        <input id="trueKRange" type="range" min="2" max="8" step="1" value="3" />
+        <div id="trueKVal">3</div>
+      </div>
+
+      <div class="slider">
+        <div>クラス間隔</div>
+        <input id="sepRange" type="range" min="0.6" max="3.8" step="0.1" value="2.2" />
+        <div id="sepVal">2.2</div>
+      </div>
+
+      <div class="slider">
+        <div>ノイズ σ</div>
+        <input id="noiseRange" type="range" min="0.03" max="1.20" step="0.01" value="0.28" />
+        <div id="noiseVal">0.28</div>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="kv">
+        <div>マージステップ</div><div id="stepVal">0</div>
+        <div>現在クラスタ数</div><div id="activeVal">0</div>
+        <div>直近マージ距離</div><div id="distVal">-</div>
+        <div>within scatter</div><div id="scatterVal">-</div>
+        <div>最大クラスタサイズ</div><div id="largestVal">-</div>
+      </div>
+
+      <div id="statusBox" class="status">評価: 初期化中...</div>
+      <div class="detail" id="detailBox">-</div>
+    </section>
+  </div>
+
+  <script>
+  (() => {
+    function randn() {
+      let u = 0;
+      let v = 0;
+      while (u === 0) u = Math.random();
+      while (v === 0) v = Math.random();
+      return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+    }
+
+    function clamp(v, lo, hi) {
+      return Math.min(hi, Math.max(lo, v));
+    }
+
+    function sqDist(a, b) {
+      const dx = a.x - b.x;
+      const dy = a.y - b.y;
+      return dx * dx + dy * dy;
+    }
+
+    const palette = [
+      [115, 167, 255],
+      [255, 125, 125],
+      [126, 226, 168],
+      [255, 211, 109],
+      [213, 155, 255],
+      [135, 220, 255],
+      [255, 168, 107],
+      [145, 161, 255]
+    ];
+
+    function colorOf(id, alpha) {
+      const c = palette[id % palette.length];
+      return `rgba(${c[0]},${c[1]},${c[2]},${alpha})`;
+    }
+
+    function generateData(type, count, sep, noise, trueK) {
+      const points = [];
+      for (let i = 0; i < count; i += 1) {
+        const group = i % trueK;
+        let x;
+        let y;
+
+        if (type === 'blobs') {
+          const r = sep * 1.15 + 0.5;
+          const a = (Math.PI * 2 * group) / trueK;
+          x = r * Math.cos(a) + randn() * noise;
+          y = 0.8 * r * Math.sin(a) + randn() * noise;
+        } else if (type === 'rings') {
+          const minR = 0.7;
+          const ringGap = 0.55 + sep * 0.24;
+          const radius = minR + group * ringGap;
+          const t = Math.random() * Math.PI * 2;
+          x = radius * Math.cos(t) + randn() * noise;
+          y = radius * Math.sin(t) + randn() * noise;
+        } else {
+          const label = i < count / 2 ? 0 : 1;
+          const t = Math.random() * Math.PI;
+          if (label === 0) {
+            x = Math.cos(t);
+            y = Math.sin(t);
+          } else {
+            x = 1 - Math.cos(t);
+            y = -Math.sin(t) - 0.5;
+          }
+          const sc = 2.0 + sep * 0.34;
+          x = (x - 0.55) * sc + (label === 0 ? -sep * 0.2 : sep * 0.2);
+          y = (y - 0.08) * sc;
+          x += randn() * noise;
+          y += randn() * noise;
+        }
+
+        points.push({ x: clamp(x, -4, 4), y: clamp(y, -4, 4), group });
+      }
+      return points;
+    }
+
+    const plot = document.getElementById('plot');
+    const pctx = plot.getContext('2d');
+    const mergePlot = document.getElementById('mergePlot');
+    const mctx = mergePlot.getContext('2d');
+
+    const datasetType = document.getElementById('datasetType');
+    const linkageType = document.getElementById('linkageType');
+    const targetKRange = document.getElementById('targetKRange');
+    const speedRange = document.getElementById('speedRange');
+    const countRange = document.getElementById('countRange');
+    const trueKRange = document.getElementById('trueKRange');
+    const sepRange = document.getElementById('sepRange');
+    const noiseRange = document.getElementById('noiseRange');
+
+    let points = [];
+    let clusters = [];
+    let assignment = [];
+    let nextClusterId = 0;
+    let history = [];
+
+    let running = true;
+    let finished = false;
+    let stepCount = 0;
+    let lastMerge = null;
+
+    let metrics = {
+      activeCount: 0,
+      lastDistance: 0,
+      withinScatter: 0,
+      largestSize: 0
+    };
+
+    let lastT = performance.now();
+    let accMs = 0;
+
+    function sliders() {
+      return {
+        type: datasetType.value,
+        linkage: linkageType.value,
+        targetK: parseInt(targetKRange.value, 10),
+        speed: parseInt(speedRange.value, 10),
+        count: parseInt(countRange.value, 10),
+        trueK: parseInt(trueKRange.value, 10),
+        sep: parseFloat(sepRange.value),
+        noise: parseFloat(noiseRange.value)
+      };
+    }
+
+    function activeIds() {
+      const ids = [];
+      for (const c of clusters) {
+        if (c.active) ids.push(c.id);
+      }
+      return ids;
+    }
+
+    function clusterCentroid(id) {
+      const c = clusters[id];
+      let sx = 0;
+      let sy = 0;
+      for (const pi of c.members) {
+        sx += points[pi].x;
+        sy += points[pi].y;
+      }
+      const n = Math.max(1, c.members.length);
+      return { x: sx / n, y: sy / n };
+    }
+
+    function linkageDistance(idA, idB, linkage) {
+      const A = clusters[idA].members;
+      const B = clusters[idB].members;
+
+      if (linkage === 'single') {
+        let best = Infinity;
+        for (const ai of A) {
+          for (const bi of B) {
+            best = Math.min(best, Math.sqrt(sqDist(points[ai], points[bi])));
+          }
+        }
+        return best;
+      }
+
+      if (linkage === 'complete') {
+        let best = 0;
+        for (const ai of A) {
+          for (const bi of B) {
+            best = Math.max(best, Math.sqrt(sqDist(points[ai], points[bi])));
+          }
+        }
+        return best;
+      }
+
+      let sum = 0;
+      let cnt = 0;
+      for (const ai of A) {
+        for (const bi of B) {
+          sum += Math.sqrt(sqDist(points[ai], points[bi]));
+          cnt += 1;
+        }
+      }
+      return sum / Math.max(1, cnt);
+    }
+
+    function recomputeMetrics() {
+      const active = activeIds();
+      let scatter = 0;
+      let largest = 0;
+
+      for (const cid of active) {
+        const c = clusters[cid];
+        largest = Math.max(largest, c.members.length);
+        const cent = clusterCentroid(cid);
+        for (const pi of c.members) {
+          scatter += sqDist(points[pi], cent);
+        }
+      }
+
+      metrics = {
+        activeCount: active.length,
+        lastDistance: lastMerge ? lastMerge.distance : 0,
+        withinScatter: scatter,
+        largestSize: largest
+      };
+    }
+
+    function initializeTree() {
+      clusters = [];
+      assignment = new Array(points.length);
+
+      for (let i = 0; i < points.length; i += 1) {
+        clusters.push({ id: i, members: [i], active: true });
+        assignment[i] = i;
+      }
+
+      nextClusterId = points.length;
+      history = [];
+      stepCount = 0;
+      finished = false;
+      lastMerge = null;
+      recomputeMetrics();
+    }
+
+    function regenerateData() {
+      const s = sliders();
+      const trueK = s.type === 'moons' ? 2 : s.trueK;
+      points = generateData(s.type, s.count, s.sep, s.noise, trueK);
+      initializeTree();
+      updateLegend();
+    }
+
+    function mergeOneStep(source) {
+      if (finished) return;
+
+      const s = sliders();
+      const active = activeIds();
+      if (active.length <= s.targetK) {
+        finished = true;
+        return;
+      }
+
+      let bestA = -1;
+      let bestB = -1;
+      let bestDist = Infinity;
+
+      for (let i = 0; i < active.length; i += 1) {
+        for (let j = i + 1; j < active.length; j += 1) {
+          const a = active[i];
+          const b = active[j];
+          const d = linkageDistance(a, b, s.linkage);
+          if (d < bestDist) {
+            bestDist = d;
+            bestA = a;
+            bestB = b;
+          }
+        }
+      }
+
+      if (bestA < 0 || bestB < 0) {
+        finished = true;
+        return;
+      }
+
+      const members = clusters[bestA].members.concat(clusters[bestB].members);
+      const newId = nextClusterId;
+      nextClusterId += 1;
+
+      clusters[bestA].active = false;
+      clusters[bestB].active = false;
+      clusters.push({ id: newId, members, active: true });
+
+      for (const pi of members) assignment[pi] = newId;
+
+      const centA = clusterCentroid(bestA);
+      const centB = clusterCentroid(bestB);
+      const centN = clusterCentroid(newId);
+
+      stepCount += 1;
+      lastMerge = {
+        step: stepCount,
+        a: bestA,
+        b: bestB,
+        newId,
+        sizeA: clusters[bestA].members.length,
+        sizeB: clusters[bestB].members.length,
+        sizeNew: members.length,
+        distance: bestDist,
+        centroidA: centA,
+        centroidB: centB,
+        centroidNew: centN,
+        source
+      };
+
+      history.push(lastMerge);
+      recomputeMetrics();
+
+      if (metrics.activeCount <= s.targetK) {
+        finished = true;
+      }
+    }
+
+    function statusText() {
+      const s = sliders();
+      if (finished) {
+        return {
+          level: 'good',
+          text: `目標クラスタ数 K=${s.targetK} に到達しました。`
+        };
+      }
+      if (metrics.activeCount <= s.targetK + 1) {
+        return {
+          level: 'warn',
+          text: '終了付近です。最後のマージ候補を比較しています。'
+        };
+      }
+      return {
+        level: 'good',
+        text: '最短クラスタ距離を探索し、順にマージしています。'
+      };
+    }
+
+    function updateLegend() {
+      const active = activeIds();
+      const chunks = [];
+      const show = Math.min(8, Math.max(1, active.length));
+      for (let i = 0; i < show; i += 1) {
+        chunks.push(`<span><span class="dot" style="background:${colorOf(i, 0.95)}"></span>active cluster ${i}</span>`);
+      }
+      chunks.push('<span><span class="dot" style="background:#ffffff"></span>クラスタ重心</span>');
+      chunks.push('<span><span class="dot" style="background:rgba(255,208,107,0.95)"></span>直近マージ線</span>');
+      document.getElementById('legend').innerHTML = chunks.join('');
+    }
+
+    function drawPlot() {
+      const w = plot.width;
+      const h = plot.height;
+      const pad = 56;
+      const xMin = -4;
+      const xMax = 4;
+      const yMin = -4;
+      const yMax = 4;
+      const x2px = x => pad + ((x - xMin) * (w - 2 * pad)) / (xMax - xMin);
+      const y2py = y => h - pad - ((y - yMin) * (h - 2 * pad)) / (yMax - yMin);
+
+      pctx.clearRect(0, 0, w, h);
+      pctx.fillStyle = 'rgba(7,14,30,0.55)';
+      pctx.fillRect(pad, pad, w - 2 * pad, h - 2 * pad);
+
+      pctx.strokeStyle = 'rgba(255,255,255,0.10)';
+      pctx.lineWidth = 1;
+      for (let i = 0; i <= 8; i += 1) {
+        const x = xMin + (i * (xMax - xMin)) / 8;
+        pctx.beginPath();
+        pctx.moveTo(x2px(x), y2py(yMin));
+        pctx.lineTo(x2px(x), y2py(yMax));
+        pctx.stroke();
+      }
+      for (let i = 0; i <= 8; i += 1) {
+        const y = yMin + (i * (yMax - yMin)) / 8;
+        pctx.beginPath();
+        pctx.moveTo(x2px(xMin), y2py(y));
+        pctx.lineTo(x2px(xMax), y2py(y));
+        pctx.stroke();
+      }
+
+      const active = activeIds().sort((a, b) => a - b);
+      const colorMap = {};
+      for (let i = 0; i < active.length; i += 1) colorMap[active[i]] = i;
+
+      for (let i = 0; i < points.length; i += 1) {
+        const cid = assignment[i];
+        const cidx = colorMap[cid] || 0;
+        pctx.fillStyle = colorOf(cidx, 0.95);
+        pctx.beginPath();
+        pctx.arc(x2px(points[i].x), y2py(points[i].y), 4.1, 0, Math.PI * 2);
+        pctx.fill();
+      }
+
+      if (lastMerge) {
+        pctx.strokeStyle = 'rgba(255,208,107,0.92)';
+        pctx.lineWidth = 1.8;
+        pctx.setLineDash([7, 5]);
+        pctx.beginPath();
+        pctx.moveTo(x2px(lastMerge.centroidA.x), y2py(lastMerge.centroidA.y));
+        pctx.lineTo(x2px(lastMerge.centroidB.x), y2py(lastMerge.centroidB.y));
+        pctx.stroke();
+        pctx.setLineDash([]);
+
+        pctx.strokeStyle = 'rgba(255,255,255,0.65)';
+        pctx.lineWidth = 1.3;
+        pctx.beginPath();
+        pctx.moveTo(x2px(lastMerge.centroidA.x), y2py(lastMerge.centroidA.y));
+        pctx.lineTo(x2px(lastMerge.centroidNew.x), y2py(lastMerge.centroidNew.y));
+        pctx.stroke();
+        pctx.beginPath();
+        pctx.moveTo(x2px(lastMerge.centroidB.x), y2py(lastMerge.centroidB.y));
+        pctx.lineTo(x2px(lastMerge.centroidNew.x), y2py(lastMerge.centroidNew.y));
+        pctx.stroke();
+      }
+
+      for (const cid of active) {
+        const cent = clusterCentroid(cid);
+        const cidx = colorMap[cid] || 0;
+        const px = x2px(cent.x);
+        const py = y2py(cent.y);
+
+        pctx.strokeStyle = 'rgba(255,255,255,0.96)';
+        pctx.lineWidth = 2.1;
+        pctx.beginPath();
+        pctx.moveTo(px - 6, py - 6);
+        pctx.lineTo(px + 6, py + 6);
+        pctx.stroke();
+        pctx.beginPath();
+        pctx.moveTo(px + 6, py - 6);
+        pctx.lineTo(px - 6, py + 6);
+        pctx.stroke();
+
+        pctx.fillStyle = colorOf(cidx, 0.95);
+        pctx.font = '11px "Hiragino Sans", sans-serif';
+        pctx.fillText(`C${cidx}`, px + 8, py - 8);
+      }
+
+      pctx.fillStyle = 'rgba(232,238,255,0.88)';
+      pctx.font = '12px "Hiragino Sans", sans-serif';
+      pctx.fillText('破線: 直近で結合されたクラスタ間距離', x2px(-3.95), h - 20);
+    }
+
+    function drawMergePlot() {
+      const w = mergePlot.width;
+      const h = mergePlot.height;
+      const pad = 42;
+
+      mctx.clearRect(0, 0, w, h);
+      mctx.fillStyle = 'rgba(7,14,30,0.55)';
+      mctx.fillRect(pad, 16, w - 2 * pad, h - 30);
+
+      if (history.length < 2) {
+        mctx.fillStyle = 'rgba(225,233,255,0.82)';
+        mctx.font = '12px "Hiragino Sans", sans-serif';
+        mctx.fillText('マージが進むと、結合距離の推移を表示します。', pad + 8, 38);
+        return;
+      }
+
+      const yValues = history.map(v => v.distance);
+      const yMin = 0;
+      const yMax = Math.max(0.2, Math.max(...yValues) * 1.12);
+      const x2px = i => pad + (i * (w - 2 * pad)) / (history.length - 1);
+      const y2py = v => (h - 14) - ((v - yMin) * (h - 34)) / Math.max(1e-8, yMax - yMin);
+
+      mctx.strokeStyle = 'rgba(255,255,255,0.12)';
+      mctx.lineWidth = 1;
+      for (let i = 0; i <= 4; i += 1) {
+        const y = yMin + (i * (yMax - yMin)) / 4;
+        mctx.beginPath();
+        mctx.moveTo(pad, y2py(y));
+        mctx.lineTo(w - pad, y2py(y));
+        mctx.stroke();
+      }
+
+      mctx.strokeStyle = 'rgba(255,217,116,0.98)';
+      mctx.lineWidth = 2;
+      mctx.beginPath();
+      for (let i = 0; i < history.length; i += 1) {
+        const y = history[i].distance;
+        if (i === 0) mctx.moveTo(x2px(i), y2py(y));
+        else mctx.lineTo(x2px(i), y2py(y));
+      }
+      mctx.stroke();
+
+      mctx.fillStyle = 'rgba(230,237,255,0.88)';
+      mctx.font = '11px "Hiragino Sans", sans-serif';
+      mctx.fillText('merge distance', pad + 8, 28);
+      mctx.fillText(`latest=${metrics.lastDistance.toFixed(4)} active=${metrics.activeCount}`, pad + 8, h - 8);
+    }
+
+    function updateUI() {
+      const s = sliders();
+      const trueK = s.type === 'moons' ? 2 : s.trueK;
+
+      document.getElementById('targetKVal').textContent = `${s.targetK}`;
+      document.getElementById('speedVal').textContent = `${s.speed}`;
+      document.getElementById('countVal').textContent = `${s.count}`;
+      document.getElementById('trueKVal').textContent = `${trueK}`;
+      document.getElementById('sepVal').textContent = s.sep.toFixed(1);
+      document.getElementById('noiseVal').textContent = s.noise.toFixed(2);
+
+      trueKRange.disabled = s.type === 'moons';
+      const maxTarget = Math.max(2, Math.min(20, points.length - 1));
+      targetKRange.max = `${maxTarget}`;
+      if (parseInt(targetKRange.value, 10) > maxTarget) {
+        targetKRange.value = `${maxTarget}`;
+      }
+
+      document.getElementById('modePill').textContent = running ? 'モード: 実行中' : 'モード: 停止中';
+      document.getElementById('statePill').textContent = running ? '状態: 計算中' : '状態: 一時停止';
+
+      document.getElementById('stepVal').textContent = `${stepCount}`;
+      document.getElementById('activeVal').textContent = `${metrics.activeCount}`;
+      document.getElementById('distVal').textContent = history.length > 0 ? metrics.lastDistance.toFixed(5) : '-';
+      document.getElementById('scatterVal').textContent = metrics.withinScatter.toFixed(5);
+      document.getElementById('largestVal').textContent = `${metrics.largestSize}`;
+
+      const st = statusText();
+      const statusBox = document.getElementById('statusBox');
+      statusBox.className = `status ${st.level}`;
+      statusBox.textContent = `評価: ${st.text}`;
+
+      const detail = [];
+      detail.push(`dataset=${s.type}, linkage=${s.linkage}, targetK=${s.targetK}`);
+      detail.push(`step=${stepCount}, activeClusters=${metrics.activeCount}`);
+      detail.push(`withinScatter=${metrics.withinScatter.toFixed(6)}, largest=${metrics.largestSize}`);
+      if (lastMerge) {
+        detail.push(`last merge: A=${lastMerge.a}(n=${lastMerge.sizeA}) + B=${lastMerge.b}(n=${lastMerge.sizeB}) -> ${lastMerge.newId}(n=${lastMerge.sizeNew})`);
+        detail.push(`distance=${lastMerge.distance.toFixed(6)}, source=${lastMerge.source}`);
+      }
+      const showN = Math.min(8, history.length);
+      for (let i = 0; i < showN; i += 1) {
+        const h = history[history.length - 1 - i];
+        detail.push(`step${h.step}: ${h.a}+${h.b}->${h.newId}, d=${h.distance.toFixed(5)}`);
+      }
+      document.getElementById('detailBox').textContent = detail.join('\n');
+
+      updateLegend();
+    }
+
+    function frame(now) {
+      const dt = now - lastT;
+      lastT = now;
+
+      if (running) {
+        accMs += dt;
+        const stepMs = 1000 / Math.max(1, sliders().speed);
+        let guard = 0;
+        while (accMs >= stepMs && guard < 80) {
+          mergeOneStep('auto');
+          accMs -= stepMs;
+          guard += 1;
+        }
+      } else {
+        accMs = 0;
+      }
+
+      drawPlot();
+      drawMergePlot();
+      updateUI();
+      requestAnimationFrame(frame);
+    }
+
+    document.getElementById('btnPlay').addEventListener('click', () => {
+      running = true;
+    });
+
+    document.getElementById('btnPause').addEventListener('click', () => {
+      running = false;
+    });
+
+    document.getElementById('btnStep').addEventListener('click', () => {
+      running = false;
+      mergeOneStep('manual');
+    });
+
+    document.getElementById('btnReset').addEventListener('click', () => {
+      running = false;
+      initializeTree();
+    });
+
+    document.getElementById('btnNew').addEventListener('click', () => {
+      running = false;
+      regenerateData();
+    });
+
+    datasetType.addEventListener('change', () => {
+      running = false;
+      regenerateData();
+    });
+
+    linkageType.addEventListener('change', () => {
+      running = false;
+      initializeTree();
+    });
+
+    targetKRange.addEventListener('change', () => {
+      running = false;
+      initializeTree();
+    });
+
+    countRange.addEventListener('change', () => {
+      running = false;
+      regenerateData();
+    });
+
+    trueKRange.addEventListener('change', () => {
+      running = false;
+      regenerateData();
+    });
+
+    sepRange.addEventListener('change', () => {
+      running = false;
+      regenerateData();
+    });
+
+    noiseRange.addEventListener('change', () => {
+      running = false;
+      regenerateData();
+    });
+
+    const live = [targetKRange, speedRange, countRange, trueKRange, sepRange, noiseRange];
+    for (const r of live) {
+      r.addEventListener('input', updateUI);
+    }
+
+    regenerateData();
+    requestAnimationFrame(frame);
+  })();
+  </script>
+</body>
+</html>

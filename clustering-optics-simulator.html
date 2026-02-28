@@ -1,0 +1,1056 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>OPTICS クラスタリングシミュレータ</title>
+  <style>
+    :root {
+      --bg:#081326;
+      --panel:#0f1f3e;
+      --text:#e9efff;
+      --muted:#aab8de;
+      --line:#2b406e;
+      --warn:#ffd06b;
+      --good:#67d79a;
+      --bad:#ff8787;
+      --accent:#73a7ff;
+    }
+
+    * { box-sizing:border-box; }
+
+    body {
+      margin:0;
+      min-height:100vh;
+      color:var(--text);
+      font-family:"Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif;
+      background:
+        radial-gradient(circle at 12% 14%, rgba(115,167,255,0.17), transparent 34%),
+        radial-gradient(circle at 88% 10%, rgba(111,223,167,0.16), transparent 28%),
+        linear-gradient(180deg, #060f1d, var(--bg));
+    }
+
+    .top-nav {
+      max-width:1220px;
+      margin:14px auto 0;
+      padding:0 18px;
+      display:flex;
+      gap:14px;
+      flex-wrap:wrap;
+    }
+
+    .top-link {
+      color:var(--muted);
+      text-decoration:none;
+      font-size:13px;
+    }
+
+    .top-link:hover {
+      color:var(--text);
+      text-decoration:underline;
+    }
+
+    .wrap {
+      max-width:1220px;
+      margin:0 auto;
+      padding:16px 18px 24px;
+      display:grid;
+      grid-template-columns:1.22fr 0.78fr;
+      gap:16px;
+    }
+
+    .card {
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,0.09);
+      background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+      padding:14px;
+      box-shadow:0 15px 32px rgba(0,0,0,0.35);
+    }
+
+    h1 {
+      margin:0 0 8px;
+      font-size:19px;
+      line-height:1.35;
+    }
+
+    .sub {
+      margin:0;
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.65;
+    }
+
+    .pill {
+      display:inline-block;
+      padding:2px 8px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,0.13);
+      background:rgba(255,255,255,0.05);
+      color:var(--muted);
+      font-size:12px;
+    }
+
+    .formula {
+      margin-top:10px;
+      border-radius:9px;
+      border:1px solid rgba(255,255,255,0.1);
+      background:rgba(8,16,32,0.52);
+      padding:9px;
+      color:#dce5ff;
+      font-size:12px;
+      line-height:1.6;
+      font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      white-space:pre-wrap;
+    }
+
+    .desc {
+      margin-top:10px;
+      border-radius:9px;
+      border:1px solid rgba(255,255,255,0.1);
+      background:rgba(255,255,255,0.03);
+      padding:9px;
+      font-size:12px;
+      line-height:1.6;
+      color:#d4deff;
+    }
+
+    canvas {
+      width:100%;
+      height:auto;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,0.09);
+      background:rgba(4,10,24,0.45);
+    }
+
+    .legend {
+      margin-top:9px;
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      font-size:12px;
+      color:var(--muted);
+    }
+
+    .dot {
+      display:inline-block;
+      width:10px;
+      height:10px;
+      border-radius:50%;
+      margin-right:6px;
+      vertical-align:middle;
+    }
+
+    .mini-title {
+      margin:12px 0 7px;
+      font-size:13px;
+      color:var(--muted);
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+    }
+
+    .row {
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      align-items:center;
+    }
+
+    button {
+      cursor:pointer;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,0.16);
+      background:rgba(255,255,255,0.06);
+      color:var(--text);
+      font-size:13px;
+      padding:8px 10px;
+      transition:background .2s ease;
+    }
+
+    button:hover { background:rgba(255,255,255,0.11); }
+
+    button.primary {
+      border-color:rgba(115,167,255,0.58);
+      background:rgba(115,167,255,0.21);
+    }
+
+    button.primary:hover { background:rgba(115,167,255,0.28); }
+
+    .selectrow {
+      display:grid;
+      grid-template-columns:120px 1fr;
+      gap:10px;
+      margin:8px 0;
+      align-items:center;
+      font-size:13px;
+    }
+
+    select {
+      width:100%;
+      border-radius:9px;
+      border:1px solid rgba(255,255,255,0.15);
+      background:rgba(255,255,255,0.06);
+      color:var(--text);
+      padding:7px 8px;
+      font-size:13px;
+    }
+
+    .slider {
+      margin:10px 0;
+      display:grid;
+      grid-template-columns:140px 1fr 84px;
+      gap:10px;
+      align-items:center;
+      font-size:13px;
+    }
+
+    input[type="range"] { width:100%; accent-color:#75a8ff; }
+
+    .checkrow {
+      margin:8px 0;
+      color:var(--muted);
+      font-size:13px;
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+
+    .hr {
+      height:1px;
+      margin:12px 0;
+      background:rgba(255,255,255,0.11);
+    }
+
+    .kv {
+      display:grid;
+      grid-template-columns:1fr auto;
+      gap:8px 10px;
+      font-size:13px;
+    }
+
+    .kv div:nth-child(odd) { color:var(--muted); }
+
+    .status {
+      margin-top:8px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,0.1);
+      background:rgba(0,0,0,0.2);
+      padding:10px;
+      font-size:13px;
+      line-height:1.55;
+    }
+
+    .status.good {
+      border-color:rgba(103,215,154,0.52);
+      background:rgba(103,215,154,0.12);
+    }
+
+    .status.warn {
+      border-color:rgba(255,208,107,0.52);
+      background:rgba(255,208,107,0.12);
+    }
+
+    .detail {
+      margin-top:8px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,0.09);
+      background:rgba(2,8,20,0.55);
+      padding:8px;
+      color:#d8e2ff;
+      font-size:12px;
+      font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      white-space:pre-wrap;
+      max-height:190px;
+      overflow:auto;
+    }
+
+    @media (max-width: 990px) {
+      .wrap { grid-template-columns:1fr; }
+      .slider { grid-template-columns:112px 1fr 84px; }
+      .selectrow { grid-template-columns:100px 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="top-nav">
+    <a class="top-link" href="clustering-hub.html">← クラスタリングハブへ戻る</a>
+    <a class="top-link" href="index.html">研修トップへ戻る</a>
+  </div>
+
+  <div class="wrap">
+    <section class="card">
+      <h1>OPTICS クラスタリングシミュレータ</h1>
+      <p class="sub">
+        OPTICSは密度ベース法で、点を処理順に並べた reachability プロットからクラスタ構造を読み取ります。
+        DBSCANと違い、密度の異なる構造も比較的扱いやすいです。
+      </p>
+
+      <div class="formula">近傍
+N_ε(p) = { q | dist(p,q) ≤ ε }
+
+core distance
+coreDist(p) = MinPts番目近傍までの距離
+
+reachability update
+reachDist(q) = min( reachDist(q), max(coreDist(p), dist(p,q)) )
+
+処理順序を出力し、reachability閾値でクラスタ抽出</div>
+
+      <div class="desc">
+        <b>パラメータ説明</b><br>
+        `ε` と `MinPts` は密度判定、`抽出閾値 τ` は reachability プロットを切る高さです。
+        τを下げるほど厳密な高密度クラスタのみ残ります。
+      </div>
+
+      <canvas id="plot" width="860" height="500"></canvas>
+      <div class="legend" id="legend"></div>
+
+      <div class="mini-title">
+        <span>Reachability Plot（処理順）</span>
+        <span class="pill" id="modePill">モード: 処理中</span>
+      </div>
+      <canvas id="reachPlot" width="860" height="210"></canvas>
+    </section>
+
+    <section class="card">
+      <div class="row" style="justify-content:space-between;">
+        <div style="font-size:14px; font-weight:700;">操作パネル</div>
+        <div class="pill" id="statePill">状態: 計算中</div>
+      </div>
+
+      <div class="row" style="margin-top:10px;">
+        <button class="primary" id="btnPlay">再生</button>
+        <button id="btnPause">停止</button>
+        <button id="btnStep">1ステップ</button>
+        <button id="btnReset">探索リセット</button>
+        <button id="btnNew">データ再生成</button>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="selectrow">
+        <div>データ形状</div>
+        <select id="datasetType">
+          <option value="blobs">ガウス塊</option>
+          <option value="rings">同心円</option>
+          <option value="moons">2つの月</option>
+        </select>
+      </div>
+
+      <div class="slider">
+        <div>ε</div>
+        <input id="epsRange" type="range" min="0.10" max="2.40" step="0.01" value="0.55" />
+        <div id="epsVal">0.55</div>
+      </div>
+
+      <div class="slider">
+        <div>MinPts</div>
+        <input id="minPtsRange" type="range" min="2" max="20" step="1" value="6" />
+        <div id="minPtsVal">6</div>
+      </div>
+
+      <div class="slider">
+        <div>抽出閾値 τ</div>
+        <input id="tauRange" type="range" min="0.05" max="2.50" step="0.01" value="0.45" />
+        <div id="tauVal">0.45</div>
+      </div>
+
+      <div class="slider">
+        <div>更新/秒</div>
+        <input id="speedRange" type="range" min="1" max="35" step="1" value="8" />
+        <div id="speedVal">8</div>
+      </div>
+
+      <div class="slider">
+        <div>点の数</div>
+        <input id="countRange" type="range" min="24" max="220" step="2" value="120" />
+        <div id="countVal">120</div>
+      </div>
+
+      <div class="slider">
+        <div>生成クラスタ数</div>
+        <input id="trueKRange" type="range" min="2" max="8" step="1" value="3" />
+        <div id="trueKVal">3</div>
+      </div>
+
+      <div class="slider">
+        <div>クラス間隔</div>
+        <input id="sepRange" type="range" min="0.6" max="3.8" step="0.1" value="2.2" />
+        <div id="sepVal">2.2</div>
+      </div>
+
+      <div class="slider">
+        <div>ノイズ σ</div>
+        <input id="noiseRange" type="range" min="0.03" max="1.20" step="0.01" value="0.32" />
+        <div id="noiseVal">0.32</div>
+      </div>
+
+      <label class="checkrow"><input id="showEps" type="checkbox" checked /> 現在点の ε 近傍を表示</label>
+
+      <div class="hr"></div>
+
+      <div class="kv">
+        <div>ステップ</div><div id="stepVal">0</div>
+        <div>処理済み / 全点</div><div id="procVal">0 / 0</div>
+        <div>seed候補数</div><div id="seedVal">0</div>
+        <div>抽出クラスタ数</div><div id="clusterVal">0</div>
+        <div>抽出ノイズ点</div><div id="noiseCntVal">0</div>
+        <div>平均reachability</div><div id="reachMeanVal">-</div>
+      </div>
+
+      <div id="statusBox" class="status">評価: 初期化中...</div>
+      <div class="detail" id="detailBox">-</div>
+    </section>
+  </div>
+
+  <script>
+  (() => {
+    function randn() {
+      let u = 0;
+      let v = 0;
+      while (u === 0) u = Math.random();
+      while (v === 0) v = Math.random();
+      return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+    }
+
+    function clamp(v, lo, hi) {
+      return Math.min(hi, Math.max(lo, v));
+    }
+
+    function sqDist(a, b) {
+      const dx = a.x - b.x;
+      const dy = a.y - b.y;
+      return dx * dx + dy * dy;
+    }
+
+    function shuffle(arr) {
+      for (let i = arr.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(Math.random() * (i + 1));
+        const t = arr[i];
+        arr[i] = arr[j];
+        arr[j] = t;
+      }
+      return arr;
+    }
+
+    const palette = [
+      [115, 167, 255],
+      [255, 125, 125],
+      [126, 226, 168],
+      [255, 211, 109],
+      [213, 155, 255],
+      [135, 220, 255],
+      [255, 168, 107],
+      [145, 161, 255]
+    ];
+
+    function colorOf(id, alpha) {
+      const c = palette[id % palette.length];
+      return `rgba(${c[0]},${c[1]},${c[2]},${alpha})`;
+    }
+
+    function generateData(type, count, sep, noise, trueK) {
+      const points = [];
+      for (let i = 0; i < count; i += 1) {
+        const group = i % trueK;
+        let x;
+        let y;
+
+        if (type === 'blobs') {
+          const r = sep * 1.15 + 0.5;
+          const a = (Math.PI * 2 * group) / trueK;
+          x = r * Math.cos(a) + randn() * noise;
+          y = 0.8 * r * Math.sin(a) + randn() * noise;
+        } else if (type === 'rings') {
+          const minR = 0.7;
+          const ringGap = 0.55 + sep * 0.24;
+          const radius = minR + group * ringGap;
+          const t = Math.random() * Math.PI * 2;
+          x = radius * Math.cos(t) + randn() * noise;
+          y = radius * Math.sin(t) + randn() * noise;
+        } else {
+          const label = i < count / 2 ? 0 : 1;
+          const t = Math.random() * Math.PI;
+          if (label === 0) {
+            x = Math.cos(t);
+            y = Math.sin(t);
+          } else {
+            x = 1 - Math.cos(t);
+            y = -Math.sin(t) - 0.5;
+          }
+          const sc = 2.0 + sep * 0.34;
+          x = (x - 0.55) * sc + (label === 0 ? -sep * 0.2 : sep * 0.2);
+          y = (y - 0.08) * sc;
+          x += randn() * noise;
+          y += randn() * noise;
+        }
+
+        points.push({
+          x: clamp(x, -4, 4),
+          y: clamp(y, -4, 4),
+          group,
+          processed: false,
+          reach: Infinity,
+          coreDist: Infinity,
+          order: -1,
+          cluster: -1,
+          inSeed: false
+        });
+      }
+      return points;
+    }
+
+    const plot = document.getElementById('plot');
+    const pctx = plot.getContext('2d');
+    const reachPlot = document.getElementById('reachPlot');
+    const rctx = reachPlot.getContext('2d');
+
+    const datasetType = document.getElementById('datasetType');
+    const epsRange = document.getElementById('epsRange');
+    const minPtsRange = document.getElementById('minPtsRange');
+    const tauRange = document.getElementById('tauRange');
+    const speedRange = document.getElementById('speedRange');
+    const countRange = document.getElementById('countRange');
+    const trueKRange = document.getElementById('trueKRange');
+    const sepRange = document.getElementById('sepRange');
+    const noiseRange = document.getElementById('noiseRange');
+    const showEps = document.getElementById('showEps');
+
+    let points = [];
+    let distMat = [];
+
+    let running = true;
+    let stepCount = 0;
+
+    let order = [];
+    let processOrder = [];
+    let scanCursor = 0;
+    let seedReach = [];
+    let seedActive = [];
+
+    let currentIdx = -1;
+    let lastAction = null;
+
+    let metrics = {
+      processed: 0,
+      seedCount: 0,
+      clusterCount: 0,
+      noiseCount: 0,
+      reachMean: 0
+    };
+
+    let lastT = performance.now();
+    let accMs = 0;
+
+    function sliders() {
+      return {
+        type: datasetType.value,
+        eps: parseFloat(epsRange.value),
+        minPts: parseInt(minPtsRange.value, 10),
+        tau: parseFloat(tauRange.value),
+        speed: parseInt(speedRange.value, 10),
+        count: parseInt(countRange.value, 10),
+        trueK: parseInt(trueKRange.value, 10),
+        sep: parseFloat(sepRange.value),
+        noise: parseFloat(noiseRange.value)
+      };
+    }
+
+    function updateLegend() {
+      const out = [];
+      const show = Math.min(8, Math.max(1, metrics.clusterCount));
+      for (let i = 0; i < show; i += 1) {
+        out.push(`<span><span class="dot" style="background:${colorOf(i, 0.95)}"></span>cluster ${i}</span>`);
+      }
+      out.push('<span><span class="dot" style="background:rgba(255,208,107,0.95)"></span>noise</span>');
+      out.push('<span><span class="dot" style="background:rgba(170,184,222,0.55)"></span>未処理</span>');
+      out.push('<span><span class="dot" style="background:#fff"></span>現在処理点</span>');
+      document.getElementById('legend').innerHTML = out.join('');
+    }
+
+    function buildDistMat() {
+      const n = points.length;
+      distMat = new Array(n);
+      for (let i = 0; i < n; i += 1) {
+        distMat[i] = new Array(n);
+        for (let j = 0; j < n; j += 1) {
+          distMat[i][j] = Math.sqrt(sqDist(points[i], points[j]));
+        }
+      }
+    }
+
+    function neighborsWithinEps(idx, eps) {
+      const arr = [];
+      for (let j = 0; j < points.length; j += 1) {
+        if (distMat[idx][j] <= eps) arr.push(j);
+      }
+      return arr;
+    }
+
+    function calcCoreDist(idx, neighbors, minPts) {
+      if (neighbors.length < minPts) return Infinity;
+      const d = neighbors.map(j => distMat[idx][j]);
+      d.sort((a, b) => a - b);
+      return d[minPts - 1];
+    }
+
+    function bestSeedIdx() {
+      let best = -1;
+      let bestR = Infinity;
+      for (let i = 0; i < points.length; i += 1) {
+        if (!seedActive[i]) continue;
+        if (seedReach[i] < bestR) {
+          bestR = seedReach[i];
+          best = i;
+        }
+      }
+      return best;
+    }
+
+    function nextUnprocessed() {
+      while (scanCursor < order.length) {
+        const idx = order[scanCursor];
+        scanCursor += 1;
+        if (!points[idx].processed) return idx;
+      }
+      return -1;
+    }
+
+    function extractClustersByTau() {
+      const tau = sliders().tau;
+      let cid = -1;
+
+      for (let i = 0; i < points.length; i += 1) {
+        if (!points[i].processed) {
+          points[i].cluster = -1;
+        }
+      }
+
+      for (let pos = 0; pos < processOrder.length; pos += 1) {
+        const idx = processOrder[pos];
+        const p = points[idx];
+
+        if (p.reach > tau) {
+          if (p.coreDist <= tau) {
+            cid += 1;
+            p.cluster = cid;
+          } else {
+            p.cluster = -1;
+          }
+        } else {
+          p.cluster = cid >= 0 ? cid : -1;
+        }
+      }
+
+      let noise = 0;
+      for (const p of points) {
+        if (p.processed && p.cluster < 0) noise += 1;
+      }
+
+      metrics.clusterCount = Math.max(0, cid + 1);
+      metrics.noiseCount = noise;
+    }
+
+    function recomputeMetrics() {
+      let processed = 0;
+      let seedCount = 0;
+      let reachSum = 0;
+      let reachCnt = 0;
+
+      for (let i = 0; i < points.length; i += 1) {
+        if (points[i].processed) {
+          processed += 1;
+          if (Number.isFinite(points[i].reach)) {
+            reachSum += points[i].reach;
+            reachCnt += 1;
+          }
+        }
+        if (seedActive[i]) seedCount += 1;
+      }
+
+      metrics.processed = processed;
+      metrics.seedCount = seedCount;
+      metrics.reachMean = reachCnt > 0 ? reachSum / reachCnt : 0;
+
+      extractClustersByTau();
+    }
+
+    function resetOptics() {
+      order = shuffle(new Array(points.length).fill(0).map((_, i) => i));
+      processOrder = [];
+      scanCursor = 0;
+      seedReach = new Array(points.length).fill(Infinity);
+      seedActive = new Array(points.length).fill(false);
+
+      for (const p of points) {
+        p.processed = false;
+        p.reach = Infinity;
+        p.coreDist = Infinity;
+        p.order = -1;
+        p.cluster = -1;
+        p.inSeed = false;
+      }
+
+      stepCount = 0;
+      currentIdx = -1;
+      lastAction = {
+        phase: 'init',
+        text: '探索順序とseed集合を初期化しました。',
+        point: -1,
+        neighbors: 0,
+        coreDist: Infinity,
+        source: 'init'
+      };
+
+      recomputeMetrics();
+    }
+
+    function regenerateData() {
+      const s = sliders();
+      const trueK = s.type === 'moons' ? 2 : s.trueK;
+      points = generateData(s.type, s.count, s.sep, s.noise, trueK);
+      buildDistMat();
+      resetOptics();
+      updateLegend();
+    }
+
+    function processPoint(idx, source) {
+      const s = sliders();
+      const p = points[idx];
+      currentIdx = idx;
+
+      p.processed = true;
+      p.inSeed = false;
+      seedActive[idx] = false;
+      seedReach[idx] = Infinity;
+
+      const neighbors = neighborsWithinEps(idx, s.eps);
+      const coreDist = calcCoreDist(idx, neighbors, s.minPts);
+      p.coreDist = coreDist;
+
+      p.order = processOrder.length;
+      processOrder.push(idx);
+
+      if (p.order === 0) p.reach = Infinity;
+
+      if (Number.isFinite(coreDist)) {
+        for (const q of neighbors) {
+          if (points[q].processed) continue;
+          const newReach = Math.max(coreDist, distMat[idx][q]);
+          if (newReach < seedReach[q]) {
+            seedReach[q] = newReach;
+            seedActive[q] = true;
+            points[q].inSeed = true;
+            points[q].reach = newReach;
+          }
+        }
+      }
+
+      lastAction = {
+        phase: 'process',
+        text: Number.isFinite(coreDist)
+          ? `点 ${idx} は core 点。近傍点の reachability を更新しました。`
+          : `点 ${idx} は非core。新たな reachability 更新はありません。`,
+        point: idx,
+        neighbors: neighbors.length,
+        coreDist,
+        source
+      };
+    }
+
+    function runOneStep(source) {
+      stepCount += 1;
+
+      const sidx = bestSeedIdx();
+      if (sidx >= 0) {
+        processPoint(sidx, source);
+      } else {
+        const idx = nextUnprocessed();
+        if (idx < 0) {
+          running = false;
+          lastAction = {
+            phase: 'done',
+            text: '全点の処理が完了しました。',
+            point: -1,
+            neighbors: 0,
+            coreDist: Infinity,
+            source
+          };
+          recomputeMetrics();
+          return;
+        }
+        points[idx].reach = Infinity;
+        processPoint(idx, source);
+      }
+
+      recomputeMetrics();
+
+      if (metrics.processed >= points.length) running = false;
+    }
+
+    function drawMainPlot() {
+      const w = plot.width;
+      const h = plot.height;
+      const pad = 56;
+      const xMin = -4;
+      const xMax = 4;
+      const yMin = -4;
+      const yMax = 4;
+      const x2px = x => pad + ((x - xMin) * (w - 2 * pad)) / (xMax - xMin);
+      const y2py = y => h - pad - ((y - yMin) * (h - 2 * pad)) / (yMax - yMin);
+
+      pctx.clearRect(0, 0, w, h);
+      pctx.fillStyle = 'rgba(7,14,30,0.55)';
+      pctx.fillRect(pad, pad, w - 2 * pad, h - 2 * pad);
+
+      pctx.strokeStyle = 'rgba(255,255,255,0.10)';
+      pctx.lineWidth = 1;
+      for (let i = 0; i <= 8; i += 1) {
+        const x = xMin + (i * (xMax - xMin)) / 8;
+        pctx.beginPath();
+        pctx.moveTo(x2px(x), y2py(yMin));
+        pctx.lineTo(x2px(x), y2py(yMax));
+        pctx.stroke();
+      }
+      for (let i = 0; i <= 8; i += 1) {
+        const y = yMin + (i * (yMax - yMin)) / 8;
+        pctx.beginPath();
+        pctx.moveTo(x2px(xMin), y2py(y));
+        pctx.lineTo(x2px(xMax), y2py(y));
+        pctx.stroke();
+      }
+
+      if (showEps.checked && currentIdx >= 0) {
+        const p = points[currentIdx];
+        const radiusPx = sliders().eps * (w - 2 * pad) / (xMax - xMin);
+        pctx.strokeStyle = 'rgba(115,167,255,0.60)';
+        pctx.lineWidth = 1.4;
+        pctx.beginPath();
+        pctx.arc(x2px(p.x), y2py(p.y), radiusPx, 0, Math.PI * 2);
+        pctx.stroke();
+      }
+
+      for (let i = 0; i < points.length; i += 1) {
+        const p = points[i];
+        if (!p.processed) {
+          pctx.fillStyle = 'rgba(170,184,222,0.55)';
+        } else if (p.cluster >= 0) {
+          pctx.fillStyle = colorOf(p.cluster, 0.95);
+        } else {
+          pctx.fillStyle = 'rgba(255,208,107,0.95)';
+        }
+
+        pctx.beginPath();
+        pctx.arc(x2px(p.x), y2py(p.y), p.inSeed ? 4.9 : 4.1, 0, Math.PI * 2);
+        pctx.fill();
+
+        if (i === currentIdx) {
+          pctx.strokeStyle = 'rgba(255,255,255,0.95)';
+          pctx.lineWidth = 1.8;
+          pctx.beginPath();
+          pctx.arc(x2px(p.x), y2py(p.y), 8.4, 0, Math.PI * 2);
+          pctx.stroke();
+        }
+      }
+
+      pctx.fillStyle = 'rgba(232,238,255,0.88)';
+      pctx.font = '12px "Hiragino Sans", sans-serif';
+      pctx.fillText('白リング: 現在処理点 / 大きい点: seed集合', x2px(-3.95), h - 20);
+    }
+
+    function drawReachPlot() {
+      const w = reachPlot.width;
+      const h = reachPlot.height;
+      const pad = 36;
+
+      rctx.clearRect(0, 0, w, h);
+      rctx.fillStyle = 'rgba(7,14,30,0.55)';
+      rctx.fillRect(pad, 14, w - 2 * pad, h - 24);
+
+      const n = points.length;
+      if (n === 0) return;
+
+      const tau = sliders().tau;
+      const yMax = Math.max(0.15, sliders().eps * 1.25, tau * 1.2);
+      const bw = (w - 2 * pad) / n;
+      const y2py = v => (h - 10) - (Math.min(v, yMax) * (h - 28)) / yMax;
+
+      rctx.strokeStyle = 'rgba(255,255,255,0.14)';
+      rctx.lineWidth = 1;
+      for (let i = 0; i <= 4; i += 1) {
+        const y = (i * yMax) / 4;
+        rctx.beginPath();
+        rctx.moveTo(pad, y2py(y));
+        rctx.lineTo(w - pad, y2py(y));
+        rctx.stroke();
+      }
+
+      for (let pos = 0; pos < n; pos += 1) {
+        let idx = -1;
+        if (pos < processOrder.length) idx = processOrder[pos];
+
+        const x = pad + pos * bw;
+        if (idx < 0) {
+          rctx.fillStyle = 'rgba(170,184,222,0.25)';
+          rctx.fillRect(x, h - 10, Math.max(1, bw - 0.5), 1);
+          continue;
+        }
+
+        const p = points[idx];
+        const reach = Number.isFinite(p.reach) ? p.reach : yMax;
+        const top = y2py(reach);
+
+        if (p.cluster >= 0) rctx.fillStyle = colorOf(p.cluster, 0.95);
+        else rctx.fillStyle = 'rgba(255,208,107,0.95)';
+
+        rctx.fillRect(x, top, Math.max(1, bw - 0.3), h - 10 - top);
+      }
+
+      rctx.strokeStyle = 'rgba(255,125,125,0.95)';
+      rctx.lineWidth = 1.5;
+      const yTau = y2py(tau);
+      rctx.beginPath();
+      rctx.moveTo(pad, yTau);
+      rctx.lineTo(w - pad, yTau);
+      rctx.stroke();
+
+      rctx.fillStyle = 'rgba(230,237,255,0.88)';
+      rctx.font = '11px "Hiragino Sans", sans-serif';
+      rctx.fillText(`tau=${tau.toFixed(3)} (抽出閾値)`, pad + 8, 28);
+      rctx.fillText(`processed=${metrics.processed}/${points.length}, clusters=${metrics.clusterCount}, noise=${metrics.noiseCount}`, pad + 8, h - 4);
+    }
+
+    function statusText() {
+      if (metrics.processed >= points.length) {
+        return { level: 'good', text: '処理完了です。reachabilityプロットから抽出結果を確認できます。' };
+      }
+      if (metrics.seedCount > 0) {
+        return { level: 'good', text: 'seed集合から最小reachability点を優先処理中です。' };
+      }
+      return { level: 'warn', text: 'seed集合が空です。次の未処理点から新しい探索を開始します。' };
+    }
+
+    function updateUI() {
+      const s = sliders();
+      const trueK = s.type === 'moons' ? 2 : s.trueK;
+
+      document.getElementById('epsVal').textContent = s.eps.toFixed(2);
+      document.getElementById('minPtsVal').textContent = `${s.minPts}`;
+      document.getElementById('tauVal').textContent = s.tau.toFixed(2);
+      document.getElementById('speedVal').textContent = `${s.speed}`;
+      document.getElementById('countVal').textContent = `${s.count}`;
+      document.getElementById('trueKVal').textContent = `${trueK}`;
+      document.getElementById('sepVal').textContent = s.sep.toFixed(1);
+      document.getElementById('noiseVal').textContent = s.noise.toFixed(2);
+
+      trueKRange.disabled = s.type === 'moons';
+
+      document.getElementById('modePill').textContent = running ? 'モード: 処理中' : 'モード: 停止中';
+      document.getElementById('statePill').textContent = running ? '状態: 計算中' : '状態: 一時停止';
+
+      document.getElementById('stepVal').textContent = `${stepCount}`;
+      document.getElementById('procVal').textContent = `${metrics.processed} / ${points.length}`;
+      document.getElementById('seedVal').textContent = `${metrics.seedCount}`;
+      document.getElementById('clusterVal').textContent = `${metrics.clusterCount}`;
+      document.getElementById('noiseCntVal').textContent = `${metrics.noiseCount}`;
+      document.getElementById('reachMeanVal').textContent = metrics.reachMean.toFixed(5);
+
+      const st = statusText();
+      const statusBox = document.getElementById('statusBox');
+      statusBox.className = `status ${st.level}`;
+      statusBox.textContent = `評価: ${st.text}`;
+
+      const lines = [];
+      lines.push(`dataset=${s.type}, eps=${s.eps.toFixed(3)}, minPts=${s.minPts}, tau=${s.tau.toFixed(3)}`);
+      lines.push(`step=${stepCount}, processed=${metrics.processed}/${points.length}, seed=${metrics.seedCount}`);
+      lines.push(`clusters=${metrics.clusterCount}, noise=${metrics.noiseCount}, meanReach=${metrics.reachMean.toFixed(6)}`);
+      if (lastAction) {
+        lines.push(`phase=${lastAction.phase}, point=${lastAction.point}, |Neps|=${lastAction.neighbors}`);
+        lines.push(`coreDist=${Number.isFinite(lastAction.coreDist) ? lastAction.coreDist.toFixed(6) : 'inf'}, source=${lastAction.source}`);
+        lines.push(lastAction.text);
+      }
+      document.getElementById('detailBox').textContent = lines.join('\n');
+
+      updateLegend();
+    }
+
+    function frame(now) {
+      const dt = now - lastT;
+      lastT = now;
+
+      if (running) {
+        accMs += dt;
+        const stepMs = 1000 / Math.max(1, sliders().speed);
+        let guard = 0;
+        while (accMs >= stepMs && guard < 100) {
+          runOneStep('auto');
+          accMs -= stepMs;
+          guard += 1;
+        }
+      } else {
+        accMs = 0;
+      }
+
+      drawMainPlot();
+      drawReachPlot();
+      updateUI();
+      requestAnimationFrame(frame);
+    }
+
+    document.getElementById('btnPlay').addEventListener('click', () => {
+      running = true;
+    });
+
+    document.getElementById('btnPause').addEventListener('click', () => {
+      running = false;
+    });
+
+    document.getElementById('btnStep').addEventListener('click', () => {
+      running = false;
+      runOneStep('manual');
+    });
+
+    document.getElementById('btnReset').addEventListener('click', () => {
+      running = false;
+      resetOptics();
+    });
+
+    document.getElementById('btnNew').addEventListener('click', () => {
+      running = false;
+      regenerateData();
+    });
+
+    datasetType.addEventListener('change', () => {
+      running = false;
+      regenerateData();
+    });
+
+    const rebuildAll = [epsRange, minPtsRange, countRange, trueKRange, sepRange, noiseRange];
+    for (const r of rebuildAll) {
+      r.addEventListener('change', () => {
+        running = false;
+        if (r === epsRange || r === minPtsRange) {
+          resetOptics();
+        } else {
+          regenerateData();
+        }
+      });
+    }
+
+    tauRange.addEventListener('change', () => {
+      running = false;
+      recomputeMetrics();
+    });
+
+    const live = [epsRange, minPtsRange, tauRange, speedRange, countRange, trueKRange, sepRange, noiseRange];
+    for (const r of live) {
+      r.addEventListener('input', updateUI);
+    }
+    showEps.addEventListener('input', updateUI);
+
+    regenerateData();
+    requestAnimationFrame(frame);
+  })();
+  </script>
+</body>
+</html>

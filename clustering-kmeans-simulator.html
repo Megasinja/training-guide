@@ -1,0 +1,880 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>K-means クラスタリングシミュレータ</title>
+  <style>
+    :root {
+      --bg:#081326;
+      --panel:#0f1f3e;
+      --text:#e9efff;
+      --muted:#aab8de;
+      --line:#2b406e;
+      --warn:#ffd06b;
+      --good:#67d79a;
+      --bad:#ff8787;
+      --accent:#73a7ff;
+    }
+
+    * { box-sizing:border-box; }
+
+    body {
+      margin:0;
+      min-height:100vh;
+      color:var(--text);
+      font-family:"Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif;
+      background:
+        radial-gradient(circle at 12% 14%, rgba(115,167,255,0.17), transparent 34%),
+        radial-gradient(circle at 88% 10%, rgba(111,223,167,0.16), transparent 28%),
+        linear-gradient(180deg, #060f1d, var(--bg));
+    }
+
+    .top-nav {
+      max-width:1220px;
+      margin:14px auto 0;
+      padding:0 18px;
+      display:flex;
+      gap:14px;
+      flex-wrap:wrap;
+    }
+
+    .top-link {
+      color:var(--muted);
+      text-decoration:none;
+      font-size:13px;
+    }
+
+    .top-link:hover {
+      color:var(--text);
+      text-decoration:underline;
+    }
+
+    .wrap {
+      max-width:1220px;
+      margin:0 auto;
+      padding:16px 18px 24px;
+      display:grid;
+      grid-template-columns:1.22fr 0.78fr;
+      gap:16px;
+    }
+
+    .card {
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,0.09);
+      background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+      padding:14px;
+      box-shadow:0 15px 32px rgba(0,0,0,0.35);
+    }
+
+    h1 {
+      margin:0 0 8px;
+      font-size:19px;
+      line-height:1.35;
+    }
+
+    h2 {
+      margin:0;
+      font-size:14px;
+      line-height:1.4;
+    }
+
+    .sub {
+      margin:0;
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.65;
+    }
+
+    .pill {
+      display:inline-block;
+      padding:2px 8px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,0.13);
+      background:rgba(255,255,255,0.05);
+      color:var(--muted);
+      font-size:12px;
+    }
+
+    .formula {
+      margin-top:10px;
+      border-radius:9px;
+      border:1px solid rgba(255,255,255,0.1);
+      background:rgba(8,16,32,0.52);
+      padding:9px;
+      color:#dce5ff;
+      font-size:12px;
+      line-height:1.6;
+      font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      white-space:pre-wrap;
+    }
+
+    .desc {
+      margin-top:10px;
+      border-radius:9px;
+      border:1px solid rgba(255,255,255,0.1);
+      background:rgba(255,255,255,0.03);
+      padding:9px;
+      font-size:12px;
+      line-height:1.6;
+      color:#d4deff;
+    }
+
+    canvas {
+      width:100%;
+      height:auto;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,0.09);
+      background:rgba(4,10,24,0.45);
+    }
+
+    .legend {
+      margin-top:9px;
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      font-size:12px;
+      color:var(--muted);
+    }
+
+    .dot {
+      display:inline-block;
+      width:10px;
+      height:10px;
+      border-radius:50%;
+      margin-right:6px;
+      vertical-align:middle;
+    }
+
+    .row {
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      align-items:center;
+    }
+
+    button {
+      cursor:pointer;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,0.16);
+      background:rgba(255,255,255,0.06);
+      color:var(--text);
+      font-size:13px;
+      padding:8px 10px;
+      transition:background .2s ease;
+    }
+
+    button:hover { background:rgba(255,255,255,0.11); }
+
+    button.primary {
+      border-color:rgba(115,167,255,0.58);
+      background:rgba(115,167,255,0.21);
+    }
+
+    button.primary:hover { background:rgba(115,167,255,0.28); }
+
+    .selectrow {
+      display:grid;
+      grid-template-columns:120px 1fr;
+      gap:10px;
+      margin:8px 0;
+      align-items:center;
+      font-size:13px;
+    }
+
+    select {
+      width:100%;
+      border-radius:9px;
+      border:1px solid rgba(255,255,255,0.15);
+      background:rgba(255,255,255,0.06);
+      color:var(--text);
+      padding:7px 8px;
+      font-size:13px;
+    }
+
+    .slider {
+      margin:10px 0;
+      display:grid;
+      grid-template-columns:140px 1fr 84px;
+      gap:10px;
+      align-items:center;
+      font-size:13px;
+    }
+
+    input[type="range"] { width:100%; accent-color:#75a8ff; }
+
+    .hr {
+      height:1px;
+      margin:12px 0;
+      background:rgba(255,255,255,0.11);
+    }
+
+    .kv {
+      display:grid;
+      grid-template-columns:1fr auto;
+      gap:8px 10px;
+      font-size:13px;
+    }
+
+    .kv div:nth-child(odd) { color:var(--muted); }
+
+    .status {
+      margin-top:8px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,0.1);
+      background:rgba(0,0,0,0.2);
+      padding:10px;
+      font-size:13px;
+      line-height:1.55;
+    }
+
+    .status.good {
+      border-color:rgba(103,215,154,0.52);
+      background:rgba(103,215,154,0.12);
+    }
+
+    .status.warn {
+      border-color:rgba(255,208,107,0.52);
+      background:rgba(255,208,107,0.12);
+    }
+
+    .detail {
+      margin-top:8px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,0.09);
+      background:rgba(2,8,20,0.55);
+      padding:8px;
+      color:#d8e2ff;
+      font-size:12px;
+      font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      white-space:pre-wrap;
+      max-height:160px;
+      overflow:auto;
+    }
+
+    @media (max-width: 990px) {
+      .wrap { grid-template-columns:1fr; }
+      .slider { grid-template-columns:112px 1fr 84px; }
+      .selectrow { grid-template-columns:100px 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="top-nav">
+    <a class="top-link" href="clustering-hub.html">← クラスタリングハブへ戻る</a>
+    <a class="top-link" href="index.html">研修トップへ戻る</a>
+  </div>
+
+  <div class="wrap">
+    <section class="card">
+      <h1>K-means クラスタリングシミュレータ</h1>
+      <p class="sub">
+        重心（centroid）を反復更新してデータを分割するアルゴリズムです。
+        初期値と K の設定で結果が変わる様子を確認できます。
+      </p>
+
+      <div class="formula">目的関数
+J = Σ_i ||x_i - μ_{c_i}||²
+
+割り当て
+c_i = argmin_k ||x_i - μ_k||²
+
+重心更新
+μ_k = (1/|C_k|) Σ_{i∈C_k} x_i</div>
+
+      <div class="desc">
+        <b>パラメータ説明</b><br>
+        `K(クラスタ数)` は分ける数、`生成クラスタ数` はデータ自体の真の塊数（blobs/rings時）です。
+        `ノイズσ` を上げると塊が曖昧になり、`クラス間隔` を上げると分離しやすくなります。
+      </div>
+
+      <canvas id="plot" width="860" height="520"></canvas>
+
+      <div class="legend" id="legend"></div>
+    </section>
+
+    <section class="card">
+      <div class="row" style="justify-content:space-between;">
+        <div style="font-size:14px; font-weight:700;">操作パネル</div>
+        <div class="pill" id="modePill">モード: 学習中</div>
+      </div>
+
+      <div class="row" style="margin-top:10px;">
+        <button class="primary" id="btnPlay">再生</button>
+        <button id="btnPause">停止</button>
+        <button id="btnStep">1ステップ</button>
+        <button id="btnReset">重心リセット</button>
+        <button id="btnNew">データ再生成</button>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="selectrow">
+        <div>データ形状</div>
+        <select id="datasetType">
+          <option value="blobs">ガウス塊</option>
+          <option value="rings">同心円</option>
+          <option value="moons">2つの月</option>
+        </select>
+      </div>
+
+      <div class="slider">
+        <div>K（クラスタ数）</div>
+        <input id="kRange" type="range" min="2" max="8" step="1" value="3" />
+        <div id="kVal">3</div>
+      </div>
+
+      <div class="slider">
+        <div>生成クラスタ数</div>
+        <input id="trueKRange" type="range" min="2" max="8" step="1" value="3" />
+        <div id="trueKVal">3</div>
+      </div>
+
+      <div class="slider">
+        <div>更新/秒</div>
+        <input id="speedRange" type="range" min="1" max="30" step="1" value="5" />
+        <div id="speedVal">5</div>
+      </div>
+
+      <div class="slider">
+        <div>点の数</div>
+        <input id="countRange" type="range" min="24" max="320" step="4" value="120" />
+        <div id="countVal">120</div>
+      </div>
+
+      <div class="slider">
+        <div>クラス間隔</div>
+        <input id="sepRange" type="range" min="0.6" max="3.8" step="0.1" value="2.2" />
+        <div id="sepVal">2.2</div>
+      </div>
+
+      <div class="slider">
+        <div>ノイズ σ</div>
+        <input id="noiseRange" type="range" min="0.03" max="1.20" step="0.01" value="0.30" />
+        <div id="noiseVal">0.30</div>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="kv">
+        <div>反復ステップ</div><div id="stepVal">0</div>
+        <div>Inertia J</div><div id="inertiaVal">-</div>
+        <div>重心移動量 Σ||Δμ||</div><div id="moveVal">-</div>
+        <div>再割当て変化数</div><div id="changedVal">-</div>
+        <div>空クラスタ再初期化</div><div id="emptyVal">-</div>
+      </div>
+
+      <div id="statusBox" class="status">評価: 初期化中...</div>
+
+      <div class="detail" id="detailBox">-</div>
+    </section>
+  </div>
+
+  <script>
+  (() => {
+    function randn() {
+      let u = 0;
+      let v = 0;
+      while (u === 0) u = Math.random();
+      while (v === 0) v = Math.random();
+      return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+    }
+
+    function clamp(v, lo, hi) {
+      return Math.min(hi, Math.max(lo, v));
+    }
+
+    function sqDist(a, b) {
+      const dx = a.x - b.x;
+      const dy = a.y - b.y;
+      return dx * dx + dy * dy;
+    }
+
+    const palette = [
+      [115, 167, 255],
+      [255, 125, 125],
+      [126, 226, 168],
+      [255, 211, 109],
+      [213, 155, 255],
+      [135, 220, 255],
+      [255, 168, 107],
+      [145, 161, 255]
+    ];
+
+    function colorOf(id, alpha) {
+      const c = palette[id % palette.length];
+      return `rgba(${c[0]},${c[1]},${c[2]},${alpha})`;
+    }
+
+    function generateData(type, count, sep, noise, trueK) {
+      const points = [];
+      for (let i = 0; i < count; i += 1) {
+        const group = i % trueK;
+
+        let x;
+        let y;
+
+        if (type === 'blobs') {
+          const r = sep * 1.15 + 0.5;
+          const a = (Math.PI * 2 * group) / trueK;
+          x = r * Math.cos(a) + randn() * noise;
+          y = 0.8 * r * Math.sin(a) + randn() * noise;
+        } else if (type === 'rings') {
+          const minR = 0.6;
+          const ringGap = 0.55 + sep * 0.22;
+          const radius = minR + group * ringGap;
+          const t = Math.random() * Math.PI * 2;
+          x = radius * Math.cos(t) + randn() * noise;
+          y = radius * Math.sin(t) + randn() * noise;
+        } else {
+          const label = i < count / 2 ? 0 : 1;
+          const t = Math.random() * Math.PI;
+          if (label === 0) {
+            x = Math.cos(t);
+            y = Math.sin(t);
+          } else {
+            x = 1 - Math.cos(t);
+            y = -Math.sin(t) - 0.5;
+          }
+          const sc = 2.0 + sep * 0.34;
+          x = (x - 0.55) * sc + (label === 0 ? -sep * 0.2 : sep * 0.2);
+          y = (y - 0.08) * sc;
+          x += randn() * noise;
+          y += randn() * noise;
+        }
+
+        points.push({
+          x: clamp(x, -4, 4),
+          y: clamp(y, -4, 4),
+          group,
+          cluster: -1
+        });
+      }
+      return points;
+    }
+
+    const plot = document.getElementById('plot');
+    const pctx = plot.getContext('2d');
+
+    const datasetType = document.getElementById('datasetType');
+    const kRange = document.getElementById('kRange');
+    const trueKRange = document.getElementById('trueKRange');
+    const speedRange = document.getElementById('speedRange');
+    const countRange = document.getElementById('countRange');
+    const sepRange = document.getElementById('sepRange');
+    const noiseRange = document.getElementById('noiseRange');
+
+    let points = [];
+    let centroids = [];
+    let running = true;
+    let stepCount = 0;
+    let metrics = { inertia: 0, moved: 0, changed: 0, empty: 0 };
+    let lastStep = null;
+
+    let lastT = performance.now();
+    let accMs = 0;
+
+    function sliders() {
+      return {
+        type: datasetType.value,
+        k: parseInt(kRange.value, 10),
+        trueK: parseInt(trueKRange.value, 10),
+        speed: parseInt(speedRange.value, 10),
+        count: parseInt(countRange.value, 10),
+        sep: parseFloat(sepRange.value),
+        noise: parseFloat(noiseRange.value)
+      };
+    }
+
+    function updateLegend() {
+      const k = sliders().k;
+      const items = [];
+      for (let i = 0; i < k; i += 1) {
+        items.push(`<span><span class="dot" style="background:${colorOf(i, 0.96)}"></span>cluster ${i}</span>`);
+      }
+      items.push('<span><span class="dot" style="background:#ffffff"></span>重心（centroid）</span>');
+      document.getElementById('legend').innerHTML = items.join('');
+    }
+
+    function randomCentroids(k) {
+      const cs = [];
+      const used = new Set();
+      for (let i = 0; i < k; i += 1) {
+        let idx = Math.floor(Math.random() * points.length);
+        if (used.size < points.length) {
+          while (used.has(idx)) idx = Math.floor(Math.random() * points.length);
+        }
+        used.add(idx);
+        cs.push({ x: points[idx].x, y: points[idx].y });
+      }
+      return cs;
+    }
+
+    function assignWithCentroids(cs, prevAssign = null) {
+      const assignments = new Array(points.length);
+      const counts = new Array(cs.length).fill(0);
+      let inertia = 0;
+      let changed = 0;
+
+      for (let i = 0; i < points.length; i += 1) {
+        let best = 0;
+        let bestD = Infinity;
+        for (let k = 0; k < cs.length; k += 1) {
+          const d = sqDist(points[i], cs[k]);
+          if (d < bestD) {
+            bestD = d;
+            best = k;
+          }
+        }
+        assignments[i] = best;
+        counts[best] += 1;
+        inertia += bestD;
+        if (prevAssign && prevAssign[i] !== best) changed += 1;
+      }
+
+      return { assignments, counts, inertia, changed };
+    }
+
+    function updateCentroids(oldCs, assignments, counts) {
+      const sumsX = new Array(oldCs.length).fill(0);
+      const sumsY = new Array(oldCs.length).fill(0);
+      const next = new Array(oldCs.length);
+      let moved = 0;
+      let empty = 0;
+
+      for (let i = 0; i < points.length; i += 1) {
+        const c = assignments[i];
+        sumsX[c] += points[i].x;
+        sumsY[c] += points[i].y;
+      }
+
+      for (let k = 0; k < oldCs.length; k += 1) {
+        let nx;
+        let ny;
+        if (counts[k] === 0) {
+          const r = points[Math.floor(Math.random() * points.length)];
+          nx = r.x;
+          ny = r.y;
+          empty += 1;
+        } else {
+          nx = sumsX[k] / counts[k];
+          ny = sumsY[k] / counts[k];
+        }
+        const dx = nx - oldCs[k].x;
+        const dy = ny - oldCs[k].y;
+        moved += Math.sqrt(dx * dx + dy * dy);
+        next[k] = { x: nx, y: ny };
+      }
+
+      return { next, moved, empty };
+    }
+
+    function resetCentroids() {
+      centroids = randomCentroids(sliders().k);
+      stepCount = 0;
+      lastStep = null;
+
+      const init = assignWithCentroids(centroids, null);
+      for (let i = 0; i < points.length; i += 1) points[i].cluster = init.assignments[i];
+      metrics = {
+        inertia: init.inertia,
+        moved: 0,
+        changed: 0,
+        empty: 0
+      };
+    }
+
+    function regenerateData() {
+      const s = sliders();
+      const trueK = s.type === 'moons' ? 2 : s.trueK;
+      points = generateData(s.type, s.count, s.sep, s.noise, trueK);
+      resetCentroids();
+      updateLegend();
+    }
+
+    function runOneStep(source) {
+      const s = sliders();
+      if (centroids.length !== s.k) {
+        resetCentroids();
+      }
+
+      const oldCs = centroids.map(c => ({ x: c.x, y: c.y }));
+      const prevAssign = points.map(p => p.cluster);
+
+      const assign1 = assignWithCentroids(oldCs, prevAssign);
+      const upd = updateCentroids(oldCs, assign1.assignments, assign1.counts);
+      const assign2 = assignWithCentroids(upd.next, prevAssign);
+
+      centroids = upd.next;
+      for (let i = 0; i < points.length; i += 1) {
+        points[i].cluster = assign2.assignments[i];
+      }
+
+      stepCount += 1;
+      metrics = {
+        inertia: assign2.inertia,
+        moved: upd.moved,
+        changed: assign2.changed,
+        empty: upd.empty
+      };
+
+      lastStep = {
+        source,
+        oldCs,
+        newCs: centroids.map(c => ({ x: c.x, y: c.y })),
+        inertiaBefore: assign1.inertia,
+        inertiaAfter: assign2.inertia,
+        changed: assign2.changed,
+        moved: upd.moved,
+        empty: upd.empty,
+        counts: assign2.counts.slice()
+      };
+
+      if (metrics.changed === 0 && metrics.moved < 1e-5) {
+        running = false;
+      }
+    }
+
+    function statusText() {
+      if (!lastStep) {
+        return { level: 'warn', text: '初期化中です。' };
+      }
+      if (metrics.changed === 0 && metrics.moved < 1e-5) {
+        return { level: 'good', text: '収束しました（割当と重心がほぼ変化なし）。' };
+      }
+      if (metrics.empty > 0) {
+        return { level: 'warn', text: '空クラスタが発生し、重心をランダム再初期化しました。' };
+      }
+      return { level: 'good', text: '反復中です。重心がデータ中心へ移動しています。' };
+    }
+
+    function drawPlot() {
+      const w = plot.width;
+      const h = plot.height;
+      const pad = 56;
+      const xMin = -4;
+      const xMax = 4;
+      const yMin = -4;
+      const yMax = 4;
+      const x2px = x => pad + ((x - xMin) * (w - 2 * pad)) / (xMax - xMin);
+      const y2py = y => h - pad - ((y - yMin) * (h - 2 * pad)) / (yMax - yMin);
+      const px2x = px => xMin + ((px - pad) * (xMax - xMin)) / (w - 2 * pad);
+      const py2y = py => yMin + ((h - pad - py) * (yMax - yMin)) / (h - 2 * pad);
+
+      pctx.clearRect(0, 0, w, h);
+      pctx.fillStyle = 'rgba(7,14,30,0.55)';
+      pctx.fillRect(pad, pad, w - 2 * pad, h - 2 * pad);
+
+      const gx = 70;
+      const gy = 48;
+      const dx = (w - 2 * pad) / gx;
+      const dy = (h - 2 * pad) / gy;
+      for (let ix = 0; ix < gx; ix += 1) {
+        for (let iy = 0; iy < gy; iy += 1) {
+          const px = pad + ix * dx + dx * 0.5;
+          const py = pad + iy * dy + dy * 0.5;
+          const x = px2x(px);
+          const y = py2y(py);
+          let best = 0;
+          let bestD = Infinity;
+          for (let k = 0; k < centroids.length; k += 1) {
+            const dd = (x - centroids[k].x) * (x - centroids[k].x) + (y - centroids[k].y) * (y - centroids[k].y);
+            if (dd < bestD) {
+              bestD = dd;
+              best = k;
+            }
+          }
+          pctx.fillStyle = colorOf(best, 0.08);
+          pctx.fillRect(pad + ix * dx, pad + iy * dy, dx + 0.5, dy + 0.5);
+        }
+      }
+
+      pctx.strokeStyle = 'rgba(255,255,255,0.10)';
+      pctx.lineWidth = 1;
+      for (let i = 0; i <= 8; i += 1) {
+        const x = xMin + (i * (xMax - xMin)) / 8;
+        pctx.beginPath();
+        pctx.moveTo(x2px(x), y2py(yMin));
+        pctx.lineTo(x2px(x), y2py(yMax));
+        pctx.stroke();
+      }
+      for (let i = 0; i <= 8; i += 1) {
+        const y = yMin + (i * (yMax - yMin)) / 8;
+        pctx.beginPath();
+        pctx.moveTo(x2px(xMin), y2py(y));
+        pctx.lineTo(x2px(xMax), y2py(y));
+        pctx.stroke();
+      }
+
+      for (const p of points) {
+        pctx.fillStyle = colorOf(Math.max(0, p.cluster), 0.95);
+        pctx.beginPath();
+        pctx.arc(x2px(p.x), y2py(p.y), 4.1, 0, Math.PI * 2);
+        pctx.fill();
+      }
+
+      if (lastStep) {
+        for (let i = 0; i < lastStep.oldCs.length; i += 1) {
+          const a = lastStep.oldCs[i];
+          const b = lastStep.newCs[i];
+          pctx.strokeStyle = colorOf(i, 0.9);
+          pctx.lineWidth = 1.5;
+          pctx.beginPath();
+          pctx.moveTo(x2px(a.x), y2py(a.y));
+          pctx.lineTo(x2px(b.x), y2py(b.y));
+          pctx.stroke();
+        }
+      }
+
+      for (let i = 0; i < centroids.length; i += 1) {
+        const c = centroids[i];
+        const px = x2px(c.x);
+        const py = y2py(c.y);
+
+        pctx.strokeStyle = 'rgba(255,255,255,0.96)';
+        pctx.lineWidth = 2.4;
+        pctx.beginPath();
+        pctx.moveTo(px - 7, py - 7);
+        pctx.lineTo(px + 7, py + 7);
+        pctx.stroke();
+        pctx.beginPath();
+        pctx.moveTo(px + 7, py - 7);
+        pctx.lineTo(px - 7, py + 7);
+        pctx.stroke();
+
+        pctx.fillStyle = colorOf(i, 0.95);
+        pctx.font = '11px "Hiragino Sans", sans-serif';
+        pctx.fillText(`C${i}`, px + 8, py - 9);
+      }
+
+      pctx.fillStyle = 'rgba(232,238,255,0.88)';
+      pctx.font = '12px "Hiragino Sans", sans-serif';
+      pctx.fillText('背景色は「現在の最寄り重心領域」', x2px(-3.95), h - 20);
+    }
+
+    function updateUI() {
+      const s = sliders();
+      const trueK = s.type === 'moons' ? 2 : s.trueK;
+
+      document.getElementById('kVal').textContent = `${s.k}`;
+      document.getElementById('trueKVal').textContent = `${trueK}`;
+      document.getElementById('speedVal').textContent = `${s.speed}`;
+      document.getElementById('countVal').textContent = `${s.count}`;
+      document.getElementById('sepVal').textContent = s.sep.toFixed(1);
+      document.getElementById('noiseVal').textContent = s.noise.toFixed(2);
+
+      trueKRange.disabled = s.type === 'moons';
+
+      document.getElementById('modePill').textContent = running ? 'モード: 学習中' : 'モード: 停止中';
+
+      document.getElementById('stepVal').textContent = `${stepCount}`;
+      document.getElementById('inertiaVal').textContent = Number.isFinite(metrics.inertia) ? metrics.inertia.toFixed(4) : '-';
+      document.getElementById('moveVal').textContent = metrics.moved.toFixed(4);
+      document.getElementById('changedVal').textContent = `${metrics.changed}`;
+      document.getElementById('emptyVal').textContent = `${metrics.empty}`;
+
+      const st = statusText();
+      const statusBox = document.getElementById('statusBox');
+      statusBox.className = `status ${st.level}`;
+      statusBox.textContent = `評価: ${st.text}`;
+
+      const detail = [];
+      detail.push(`dataset=${s.type}, K=${s.k}, trueK=${trueK}`);
+      detail.push(`step=${stepCount}`);
+      detail.push(`inertia=${metrics.inertia.toFixed(6)}`);
+      detail.push(`moved=${metrics.moved.toFixed(6)}, changed=${metrics.changed}, empty=${metrics.empty}`);
+      if (lastStep) {
+        detail.push(`inertia(before)=${lastStep.inertiaBefore.toFixed(6)}`);
+        detail.push(`inertia(after)=${lastStep.inertiaAfter.toFixed(6)}`);
+        detail.push(`cluster sizes=[${lastStep.counts.join(', ')}]`);
+      }
+      document.getElementById('detailBox').textContent = detail.join('\n');
+    }
+
+    function frame(now) {
+      const dt = now - lastT;
+      lastT = now;
+
+      if (running) {
+        accMs += dt;
+        const stepMs = 1000 / Math.max(1, sliders().speed);
+        let guard = 0;
+        while (accMs >= stepMs && guard < 120) {
+          runOneStep('auto');
+          accMs -= stepMs;
+          guard += 1;
+        }
+      } else {
+        accMs = 0;
+      }
+
+      drawPlot();
+      updateUI();
+      requestAnimationFrame(frame);
+    }
+
+    document.getElementById('btnPlay').addEventListener('click', () => {
+      running = true;
+    });
+
+    document.getElementById('btnPause').addEventListener('click', () => {
+      running = false;
+    });
+
+    document.getElementById('btnStep').addEventListener('click', () => {
+      running = false;
+      runOneStep('manual');
+    });
+
+    document.getElementById('btnReset').addEventListener('click', () => {
+      running = false;
+      resetCentroids();
+    });
+
+    document.getElementById('btnNew').addEventListener('click', () => {
+      running = false;
+      regenerateData();
+    });
+
+    datasetType.addEventListener('change', () => {
+      running = false;
+      regenerateData();
+    });
+
+    kRange.addEventListener('change', () => {
+      running = false;
+      resetCentroids();
+      updateLegend();
+    });
+
+    trueKRange.addEventListener('change', () => {
+      running = false;
+      regenerateData();
+    });
+
+    countRange.addEventListener('change', () => {
+      running = false;
+      regenerateData();
+    });
+
+    sepRange.addEventListener('change', () => {
+      running = false;
+      regenerateData();
+    });
+
+    noiseRange.addEventListener('change', () => {
+      running = false;
+      regenerateData();
+    });
+
+    const liveRanges = [kRange, trueKRange, speedRange, countRange, sepRange, noiseRange];
+    for (const r of liveRanges) {
+      r.addEventListener('input', updateUI);
+    }
+
+    regenerateData();
+    requestAnimationFrame(frame);
+  })();
+  </script>
+</body>
+</html>

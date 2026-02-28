@@ -1,0 +1,1144 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SVM 1ステップ解説シミュレータ</title>
+  <style>
+    :root {
+      --bg:#081326;
+      --panel:#0f1f3e;
+      --text:#e9efff;
+      --muted:#aab8de;
+      --line:#2b406e;
+      --pos:#73a7ff;
+      --neg:#ff7d7d;
+      --batch:#ffd36d;
+      --active:#ffffff;
+      --good:#67d79a;
+      --warn:#ffd06b;
+      --bad:#ff8787;
+      --eta:#7fd6ff;
+      --grad:#ff9ece;
+    }
+
+    * { box-sizing:border-box; }
+
+    body {
+      margin:0;
+      min-height:100vh;
+      color:var(--text);
+      font-family:"Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif;
+      background:
+        radial-gradient(circle at 12% 14%, rgba(115,167,255,0.17), transparent 34%),
+        radial-gradient(circle at 88% 10%, rgba(111,223,167,0.16), transparent 28%),
+        linear-gradient(180deg, #060f1d, var(--bg));
+    }
+
+    .top-nav {
+      max-width:1220px;
+      margin:14px auto 0;
+      padding:0 18px;
+      display:flex;
+      gap:14px;
+      flex-wrap:wrap;
+    }
+
+    .top-link {
+      color:var(--muted);
+      text-decoration:none;
+      font-size:13px;
+    }
+
+    .top-link:hover {
+      color:var(--text);
+      text-decoration:underline;
+    }
+
+    .wrap {
+      max-width:1220px;
+      margin:0 auto;
+      padding:16px 18px 24px;
+      display:grid;
+      grid-template-columns:1.23fr 0.77fr;
+      gap:16px;
+    }
+
+    .card {
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,0.09);
+      background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+      padding:14px;
+      box-shadow:0 15px 32px rgba(0,0,0,0.35);
+    }
+
+    h1 {
+      margin:0 0 8px;
+      font-size:19px;
+      line-height:1.35;
+    }
+
+    .sub {
+      margin:0 0 12px;
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.65;
+    }
+
+    .pill {
+      display:inline-block;
+      padding:2px 8px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,0.13);
+      background:rgba(255,255,255,0.05);
+      color:var(--muted);
+      font-size:12px;
+    }
+
+    canvas {
+      width:100%;
+      height:auto;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,0.09);
+      background:rgba(4,10,24,0.45);
+    }
+
+    .legend {
+      margin-top:9px;
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      font-size:12px;
+      color:var(--muted);
+    }
+
+    .dot {
+      display:inline-block;
+      width:10px;
+      height:10px;
+      border-radius:50%;
+      margin-right:6px;
+      vertical-align:middle;
+    }
+
+    .row {
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      align-items:center;
+    }
+
+    button {
+      cursor:pointer;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,0.16);
+      background:rgba(255,255,255,0.06);
+      color:var(--text);
+      font-size:13px;
+      padding:8px 10px;
+      transition:background .2s ease;
+    }
+
+    button:hover { background:rgba(255,255,255,0.11); }
+
+    button.primary {
+      border-color:rgba(115,167,255,0.58);
+      background:rgba(115,167,255,0.21);
+    }
+
+    button.primary:hover { background:rgba(115,167,255,0.28); }
+
+    .selectrow {
+      display:grid;
+      grid-template-columns:104px 1fr;
+      gap:10px;
+      margin:8px 0;
+      align-items:center;
+      font-size:13px;
+    }
+
+    select {
+      width:100%;
+      border-radius:9px;
+      border:1px solid rgba(255,255,255,0.15);
+      background:rgba(255,255,255,0.06);
+      color:var(--text);
+      padding:7px 8px;
+      font-size:13px;
+    }
+
+    .slider {
+      margin:10px 0;
+      display:grid;
+      grid-template-columns:136px 1fr 84px;
+      gap:10px;
+      align-items:center;
+      font-size:13px;
+    }
+
+    input[type="range"] {
+      width:100%;
+      accent-color:#75a8ff;
+    }
+
+    .hr {
+      height:1px;
+      margin:12px 0;
+      background:rgba(255,255,255,0.11);
+    }
+
+    .kv {
+      display:grid;
+      grid-template-columns:1fr auto;
+      gap:8px 10px;
+      font-size:13px;
+    }
+
+    .kv div:nth-child(odd) { color:var(--muted); }
+
+    .status {
+      margin-top:8px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,0.1);
+      background:rgba(0,0,0,0.2);
+      padding:10px;
+      font-size:13px;
+      line-height:1.55;
+    }
+
+    .status.good {
+      border-color:rgba(103,215,154,0.52);
+      background:rgba(103,215,154,0.12);
+    }
+
+    .status.warn {
+      border-color:rgba(255,208,107,0.52);
+      background:rgba(255,208,107,0.12);
+    }
+
+    .status.bad {
+      border-color:rgba(255,135,135,0.55);
+      background:rgba(255,135,135,0.12);
+    }
+
+    .formula {
+      margin-top:8px;
+      border-radius:8px;
+      border:1px solid rgba(255,255,255,0.08);
+      background:rgba(8,16,32,0.55);
+      padding:8px;
+      color:#dce5ff;
+      font-size:12px;
+      line-height:1.6;
+    }
+
+    .proc-head {
+      margin-top:4px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      font-size:13px;
+      color:var(--muted);
+    }
+
+    .proc {
+      display:grid;
+      gap:6px;
+      margin-top:8px;
+    }
+
+    .proc-item {
+      font-size:12px;
+      color:var(--muted);
+      border:1px solid rgba(255,255,255,0.08);
+      background:rgba(255,255,255,0.02);
+      border-radius:8px;
+      padding:6px 8px;
+    }
+
+    .proc-item.active {
+      color:var(--text);
+      border-color:rgba(122,162,255,0.45);
+      background:rgba(122,162,255,0.14);
+    }
+
+    .detail {
+      margin-top:6px;
+      border-radius:8px;
+      border:1px solid rgba(255,255,255,0.08);
+      background:rgba(2,8,20,0.55);
+      padding:8px;
+      color:#d8e2ff;
+      font-size:11px;
+      line-height:1.6;
+      max-height:150px;
+      overflow:auto;
+      font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      white-space:pre-wrap;
+    }
+
+    .note {
+      margin:10px 0 0;
+      color:var(--muted);
+      font-size:12px;
+      line-height:1.6;
+    }
+
+    @media (max-width: 990px) {
+      .wrap { grid-template-columns:1fr; }
+      .slider { grid-template-columns:112px 1fr 84px; }
+      .selectrow { grid-template-columns:100px 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="top-nav">
+    <a class="top-link" href="index.html">← 新卒AI研修トップへ戻る</a>
+    <a class="top-link" href="svm-separation-simulator.html">通常版SVMシミュレータへ</a>
+  </div>
+
+  <div class="wrap">
+    <section class="card">
+      <h1>SVM 1ステップ解説シミュレータ</h1>
+      <p class="sub">
+        このページは「1回の更新で何を計算して、なぜその式になるのか」を
+        <span class="pill">シミュレーションと同期</span>して追うための教材です。
+        1ステップごとに <span class="pill">ミニバッチ抽出 → 勾配計算 → 更新 → 評価</span> を表示します。
+      </p>
+
+      <canvas id="plot" width="860" height="520"></canvas>
+
+      <div class="legend">
+        <span><span class="dot" style="background:var(--pos)"></span>クラス +1</span>
+        <span><span class="dot" style="background:var(--neg)"></span>クラス -1</span>
+        <span><span class="dot" style="background:var(--batch)"></span>今回のミニバッチ</span>
+        <span><span class="dot" style="background:var(--active)"></span>hinge有効点 (margin&lt;1)</span>
+      </div>
+
+      <div class="formula">
+        目的: <code>0.5||w||² + C · mean(max(0, 1 - y f(x)))</code><br>
+        注目: margin が 1 以上の点は hinge 勾配に寄与しません。
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="row" style="justify-content:space-between;">
+        <div style="font-size:14px; font-weight:700;">操作パネル</div>
+        <div class="pill" id="statePill">状態: 計算中</div>
+      </div>
+
+      <div class="row" style="margin-top:10px;">
+        <button class="primary" id="btnPlay">再生</button>
+        <button id="btnPause">停止</button>
+        <button id="btnStep">1ステップ</button>
+        <button id="btnReset">モデル初期化</button>
+        <button id="btnNew">データ再生成</button>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="selectrow">
+        <div>データ形状</div>
+        <select id="datasetType">
+          <option value="blobs">2ガウス塊（線形に近い）</option>
+          <option value="moons">2つの月（非線形寄り）</option>
+          <option value="xor">XOR 4塊（非線形）</option>
+        </select>
+      </div>
+
+      <div class="slider">
+        <div>正則化 C</div>
+        <input id="cRange" type="range" min="0.05" max="8.00" step="0.05" value="1.20" />
+        <div id="cVal">1.20</div>
+      </div>
+
+      <div class="slider">
+        <div>学習率 η</div>
+        <input id="lrRange" type="range" min="0.001" max="0.120" step="0.001" value="0.020" />
+        <div id="lrVal">0.020</div>
+      </div>
+
+      <div class="slider">
+        <div>減衰 ρ</div>
+        <input id="decayRange" type="range" min="0.000" max="0.050" step="0.001" value="0.008" />
+        <div id="decayVal">0.008</div>
+      </div>
+
+      <div class="slider">
+        <div>ミニバッチ</div>
+        <input id="batchRange" type="range" min="4" max="128" step="1" value="24" />
+        <div id="batchVal">24</div>
+      </div>
+
+      <div class="slider">
+        <div>更新/秒</div>
+        <input id="speedRange" type="range" min="1" max="120" step="1" value="16" />
+        <div id="speedVal">16</div>
+      </div>
+
+      <div class="slider">
+        <div>点の数</div>
+        <input id="countRange" type="range" min="20" max="220" step="2" value="120" />
+        <div id="countVal">120</div>
+      </div>
+
+      <div class="slider">
+        <div>クラス間隔</div>
+        <input id="sepRange" type="range" min="0.6" max="3.4" step="0.1" value="2.0" />
+        <div id="sepVal">2.0</div>
+      </div>
+
+      <div class="slider">
+        <div>ノイズ σ</div>
+        <input id="noiseRange" type="range" min="0.05" max="1.25" step="0.01" value="0.35" />
+        <div id="noiseVal">0.35</div>
+      </div>
+
+      <div class="slider">
+        <div>ラベル反転率</div>
+        <input id="flipRange" type="range" min="0.00" max="0.30" step="0.01" value="0.03" />
+        <div id="flipVal">0.03</div>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="kv">
+        <div>学習ステップ</div><div id="stepVal">0</div>
+        <div>Objective</div><div id="objVal">-</div>
+        <div>平均Hinge</div><div id="hingeVal">-</div>
+        <div>Train Accuracy</div><div id="trainAccVal">-</div>
+        <div>Test Accuracy</div><div id="testAccVal">-</div>
+        <div>有効学習率 η_t</div><div id="etaVal">-</div>
+        <div>active数 (margin&lt;1)</div><div id="activeVal">-</div>
+      </div>
+
+      <div id="statusBox" class="status">評価: 初期化中...</div>
+
+      <div class="hr"></div>
+
+      <div class="proc-head">
+        <div>1ステップ計算の説明</div>
+        <div class="pill" id="phasePill">手順: 待機中</div>
+      </div>
+
+      <div class="proc" id="proc">
+        <div class="proc-item">1. ミニバッチ抽出と margin 計算
+          <div class="detail" id="detailBatch">-</div>
+        </div>
+        <div class="proc-item">2. hinge と勾配を計算
+          <div class="detail" id="detailGrad">-</div>
+        </div>
+        <div class="proc-item">3. パラメータ更新
+          <div class="detail" id="detailUpdate">-</div>
+        </div>
+        <div class="proc-item">4. 更新の効果を確認
+          <div class="detail" id="detailCheck">-</div>
+        </div>
+      </div>
+
+      <p class="note">
+        思想: SVM は「マージンを広げる（0.5||w||²を小さくする）」と「誤分類/マージン違反を減らす（hinge）」の
+        トレードオフを最小化します。上の手順表示は、その考え方と式を同期表示しています。
+      </p>
+    </section>
+  </div>
+
+  <script>
+  (() => {
+    function randn() {
+      let u = 0;
+      let v = 0;
+      while (u === 0) u = Math.random();
+      while (v === 0) v = Math.random();
+      return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+    }
+
+    function clamp(v, lo, hi) {
+      return Math.min(hi, Math.max(lo, v));
+    }
+
+    function dot(a, b) {
+      let s = 0;
+      for (let i = 0; i < a.length; i += 1) s += a[i] * b[i];
+      return s;
+    }
+
+    function samplePoint(type, label, sep, noise) {
+      if (type === 'blobs') {
+        const cx = label === 1 ? sep * 0.8 : -sep * 0.8;
+        const cy = label === 1 ? sep * 0.12 : -sep * 0.12;
+        return {
+          x: cx + randn() * noise,
+          y: cy + randn() * noise
+        };
+      }
+
+      if (type === 'moons') {
+        const t = Math.random() * Math.PI;
+        let x;
+        let y;
+        if (label === 1) {
+          x = Math.cos(t);
+          y = Math.sin(t);
+        } else {
+          x = 1 - Math.cos(t);
+          y = -Math.sin(t) - 0.5;
+        }
+        const scale = 2.0 + sep * 0.36;
+        x = (x - 0.55) * scale + (label === 1 ? -sep * 0.22 : sep * 0.22);
+        y = (y - 0.08) * scale;
+        x += randn() * noise;
+        y += randn() * noise;
+        return { x, y };
+      }
+
+      const signX = Math.random() < 0.5 ? -1 : 1;
+      const signY = Math.random() < 0.5 ? -1 : 1;
+      const x = signX * sep * 0.9 + randn() * noise;
+      const y = signY * sep * 0.9 + randn() * noise;
+      const trueLabel = signX === signY ? 1 : -1;
+      return { x, y, trueLabel };
+    }
+
+    function generateDataset(type, count, sep, noise, flipRate) {
+      const points = [];
+      for (let i = 0; i < count; i += 1) {
+        let trueLabel = i < count / 2 ? 1 : -1;
+        let sample;
+
+        if (type === 'xor') {
+          sample = samplePoint(type, 0, sep, noise);
+          trueLabel = sample.trueLabel;
+        } else {
+          sample = samplePoint(type, trueLabel, sep, noise);
+        }
+
+        let label = trueLabel;
+        let flipped = false;
+        if (Math.random() < flipRate) {
+          label *= -1;
+          flipped = true;
+        }
+
+        points.push({
+          x: sample.x,
+          y: sample.y,
+          trueLabel,
+          label,
+          flipped,
+          xz: 0,
+          yz: 0,
+          phi: [0, 0],
+          score: 0
+        });
+      }
+      return points;
+    }
+
+    const plot = document.getElementById('plot');
+    const pctx = plot.getContext('2d');
+
+    const datasetType = document.getElementById('datasetType');
+    const cRange = document.getElementById('cRange');
+    const lrRange = document.getElementById('lrRange');
+    const decayRange = document.getElementById('decayRange');
+    const batchRange = document.getElementById('batchRange');
+    const speedRange = document.getElementById('speedRange');
+    const countRange = document.getElementById('countRange');
+    const sepRange = document.getElementById('sepRange');
+    const noiseRange = document.getElementById('noiseRange');
+    const flipRange = document.getElementById('flipRange');
+
+    const ranges = [
+      cRange,
+      lrRange,
+      decayRange,
+      batchRange,
+      speedRange,
+      countRange,
+      sepRange,
+      noiseRange,
+      flipRange
+    ];
+
+    const procItems = Array.from(document.querySelectorAll('#proc .proc-item'));
+
+    let trainData = [];
+    let testData = [];
+    let scaler = { mx: 0, my: 0, sx: 1, sy: 1 };
+
+    let model = { w: [0, 0], b: 0 };
+    let running = true;
+    let stepCount = 0;
+    let history = [];
+    let metrics = null;
+    let lastStep = null;
+    let lastT = performance.now();
+    let accMs = 0;
+
+    let moveAnim = null;
+
+    const phaseDurationMs = 1400;
+
+    function sliders() {
+      return {
+        type: datasetType.value,
+        C: parseFloat(cRange.value),
+        lr: parseFloat(lrRange.value),
+        decay: parseFloat(decayRange.value),
+        batch: parseInt(batchRange.value, 10),
+        speed: parseInt(speedRange.value, 10),
+        count: parseInt(countRange.value, 10),
+        sep: parseFloat(sepRange.value),
+        noise: parseFloat(noiseRange.value),
+        flip: parseFloat(flipRange.value)
+      };
+    }
+
+    function fitStandardScaler(points) {
+      const n = Math.max(1, points.length);
+      let sx = 0;
+      let sy = 0;
+      for (const p of points) {
+        sx += p.x;
+        sy += p.y;
+      }
+      const mx = sx / n;
+      const my = sy / n;
+
+      let vx = 0;
+      let vy = 0;
+      for (const p of points) {
+        const dx = p.x - mx;
+        const dy = p.y - my;
+        vx += dx * dx;
+        vy += dy * dy;
+      }
+
+      scaler = {
+        mx,
+        my,
+        sx: Math.sqrt(vx / n) + 1e-6,
+        sy: Math.sqrt(vy / n) + 1e-6
+      };
+    }
+
+    function normalizeXY(x, y) {
+      return {
+        xz: (x - scaler.mx) / scaler.sx,
+        yz: (y - scaler.my) / scaler.sy
+      };
+    }
+
+    function rebuildFeatures() {
+      for (const p of trainData) {
+        const nxy = normalizeXY(p.x, p.y);
+        p.xz = nxy.xz;
+        p.yz = nxy.yz;
+        p.phi = [p.xz, p.yz];
+      }
+      for (const p of testData) {
+        const nxy = normalizeXY(p.x, p.y);
+        p.xz = nxy.xz;
+        p.yz = nxy.yz;
+        p.phi = [p.xz, p.yz];
+      }
+    }
+
+    function scoreModel(m, phi) {
+      return dot(m.w, phi) + m.b;
+    }
+
+    function evaluateModel(m) {
+      const s = sliders();
+      const n = Math.max(1, trainData.length);
+      let hingeSum = 0;
+      let correct = 0;
+      let active = 0;
+
+      for (const p of trainData) {
+        const f = scoreModel(m, p.phi);
+        p.score = f;
+        const margin = p.label * f;
+        if ((f >= 0 ? 1 : -1) === p.label) correct += 1;
+        if (margin < 1) {
+          active += 1;
+          hingeSum += 1 - margin;
+        }
+      }
+
+      let testCorrect = 0;
+      for (const p of testData) {
+        const f = scoreModel(m, p.phi);
+        if ((f >= 0 ? 1 : -1) === p.trueLabel) testCorrect += 1;
+      }
+
+      const normSq = dot(m.w, m.w);
+      const hinge = hingeSum / n;
+      const obj = 0.5 * normSq + s.C * hinge;
+
+      return {
+        objective: obj,
+        hinge,
+        trainAcc: correct / n,
+        testAcc: testCorrect / Math.max(1, testData.length),
+        active,
+        eta: s.lr / (1 + s.decay * stepCount)
+      };
+    }
+
+    function pickBatchIndices(n, bsz) {
+      const idx = new Array(n);
+      for (let i = 0; i < n; i += 1) idx[i] = i;
+      const b = Math.max(1, Math.min(n, bsz));
+      for (let i = 0; i < b; i += 1) {
+        const j = i + Math.floor(Math.random() * (n - i));
+        const tmp = idx[i];
+        idx[i] = idx[j];
+        idx[j] = tmp;
+      }
+      return idx.slice(0, b);
+    }
+
+    function rawLinearParams(m) {
+      const a = m.w[0] / scaler.sx;
+      const b = m.w[1] / scaler.sy;
+      const c = m.b - (m.w[0] * scaler.mx) / scaler.sx - (m.w[1] * scaler.my) / scaler.sy;
+      return { a, b, c };
+    }
+
+    function initializeModel() {
+      const initStd = 0.02;
+      model = {
+        w: [randn() * initStd, randn() * initStd],
+        b: randn() * initStd
+      };
+      stepCount = 0;
+      history = [];
+      lastStep = null;
+      moveAnim = null;
+      metrics = evaluateModel(model);
+      history.push({ objective: metrics.objective, hinge: metrics.hinge, acc: metrics.trainAcc });
+    }
+
+    function regenerateData() {
+      const s = sliders();
+      trainData = generateDataset(s.type, s.count, s.sep, s.noise, s.flip);
+      testData = generateDataset(s.type, Math.max(180, Math.floor(s.count * 2.2)), s.sep, s.noise, 0);
+      fitStandardScaler(trainData);
+      rebuildFeatures();
+      initializeModel();
+    }
+
+    function runOneStep(source) {
+      const s = sliders();
+      const n = trainData.length;
+      if (n === 0) return;
+
+      const oldM = { w: [model.w[0], model.w[1]], b: model.b };
+      const oldMetrics = evaluateModel(oldM);
+      const batchIdx = pickBatchIndices(n, s.batch);
+      const bsz = Math.max(1, batchIdx.length);
+
+      let gradW = [oldM.w[0], oldM.w[1]];
+      let gradB = 0;
+      const batchInfo = [];
+
+      for (const idx of batchIdx) {
+        const p = trainData[idx];
+        const f = scoreModel(oldM, p.phi);
+        const margin = p.label * f;
+        const active = margin < 1;
+
+        if (active) {
+          const coeff = (-s.C * p.label) / bsz;
+          gradW[0] += coeff * p.phi[0];
+          gradW[1] += coeff * p.phi[1];
+          gradB += coeff;
+        }
+
+        batchInfo.push({
+          idx,
+          x: p.x,
+          y: p.y,
+          label: p.label,
+          score: f,
+          margin,
+          active
+        });
+      }
+
+      const eta = s.lr / (1 + s.decay * stepCount);
+      const newM = {
+        w: [oldM.w[0] - eta * gradW[0], oldM.w[1] - eta * gradW[1]],
+        b: oldM.b - eta * gradB
+      };
+
+      model = newM;
+      stepCount += 1;
+      metrics = evaluateModel(model);
+      history.push({ objective: metrics.objective, hinge: metrics.hinge, acc: metrics.trainAcc });
+      if (history.length > 300) history = history.slice(history.length - 300);
+
+      const now = performance.now();
+      moveAnim = {
+        from: oldM,
+        to: newM,
+        start: now,
+        duration: Math.min(900, 1000 / Math.max(1, s.speed) * 0.9)
+      };
+
+      lastStep = {
+        source,
+        start: now,
+        oldM,
+        newM,
+        oldMetrics,
+        newMetrics: metrics,
+        batchInfo,
+        batchIdx: new Set(batchIdx),
+        activeIdx: new Set(batchInfo.filter(v => v.active).map(v => v.idx)),
+        gradW,
+        gradB,
+        eta,
+        deltaObj: metrics.objective - oldMetrics.objective,
+        deltaAcc: metrics.trainAcc - oldMetrics.trainAcc
+      };
+    }
+
+    function currentPhase(now) {
+      if (!lastStep) return -1;
+      const elapsed = now - lastStep.start;
+      return Math.min(3, Math.floor(elapsed / (phaseDurationMs / 4)));
+    }
+
+    function statusText() {
+      if (!lastStep) {
+        return { level: 'warn', text: '1ステップを実行すると、計算の意図と式を段階表示します。' };
+      }
+      if (lastStep.deltaObj > 0) {
+        return { level: 'warn', text: '今回の更新でObjectiveは増加しました。ηを下げるかバッチを増やすと安定しやすくなります。' };
+      }
+      if (metrics.trainAcc > 0.93 && metrics.testAcc < 0.8) {
+        return { level: 'bad', text: '訓練精度に比べて汎化が低めです。過学習傾向を疑ってください。' };
+      }
+      return { level: 'good', text: '更新でObjectiveが下がっています。式の各項が働いている状態です。' };
+    }
+
+    function getDisplayModel(now) {
+      if (!moveAnim) return model;
+      const p = Math.min(1, (now - moveAnim.start) / moveAnim.duration);
+      const e = 1 - Math.pow(1 - p, 3);
+      const m = {
+        w: [
+          moveAnim.from.w[0] + (moveAnim.to.w[0] - moveAnim.from.w[0]) * e,
+          moveAnim.from.w[1] + (moveAnim.to.w[1] - moveAnim.from.w[1]) * e
+        ],
+        b: moveAnim.from.b + (moveAnim.to.b - moveAnim.from.b) * e
+      };
+      if (p >= 1) moveAnim = null;
+      return m;
+    }
+
+    function drawPlot(now) {
+      const m = getDisplayModel(now);
+      const w = plot.width;
+      const h = plot.height;
+      const pad = 56;
+      const prj = {
+        xMin: -4,
+        xMax: 4,
+        yMin: -4,
+        yMax: 4,
+        x2px: x => pad + ((x + 4) * (w - 2 * pad)) / 8,
+        y2py: y => h - pad - ((y + 4) * (h - 2 * pad)) / 8,
+        px2x: px => -4 + ((px - pad) * 8) / (w - 2 * pad),
+        py2y: py => -4 + ((h - pad - py) * 8) / (h - 2 * pad)
+      };
+
+      pctx.clearRect(0, 0, w, h);
+      pctx.fillStyle = 'rgba(7,14,30,0.55)';
+      pctx.fillRect(pad, pad, w - 2 * pad, h - 2 * pad);
+
+      const gridX = 88;
+      const gridY = 68;
+      const dx = (w - 2 * pad) / gridX;
+      const dy = (h - 2 * pad) / gridY;
+
+      for (let gx = 0; gx < gridX; gx += 1) {
+        for (let gy = 0; gy < gridY; gy += 1) {
+          const px = pad + gx * dx + dx * 0.5;
+          const py = pad + gy * dy + dy * 0.5;
+          const xv = prj.px2x(px);
+          const yv = prj.py2y(py);
+          const nxy = normalizeXY(xv, yv);
+          const f = scoreModel(m, [nxy.xz, nxy.yz]);
+          const alpha = clamp(0.10 + Math.min(0.14, Math.abs(f) * 0.03), 0.1, 0.24);
+          pctx.fillStyle = f >= 0 ? `rgba(115,167,255,${alpha})` : `rgba(255,125,125,${alpha})`;
+          pctx.fillRect(pad + gx * dx, pad + gy * dy, dx + 0.5, dy + 0.5);
+        }
+      }
+
+      pctx.strokeStyle = 'rgba(255,255,255,0.10)';
+      pctx.lineWidth = 1;
+      for (let i = 0; i <= 8; i += 1) {
+        const x = -4 + i;
+        pctx.beginPath();
+        pctx.moveTo(prj.x2px(x), prj.y2py(-4));
+        pctx.lineTo(prj.x2px(x), prj.y2py(4));
+        pctx.stroke();
+      }
+      for (let i = 0; i <= 8; i += 1) {
+        const y = -4 + i;
+        pctx.beginPath();
+        pctx.moveTo(prj.x2px(-4), prj.y2py(y));
+        pctx.lineTo(prj.x2px(4), prj.y2py(y));
+        pctx.stroke();
+      }
+
+      pctx.strokeStyle = 'rgba(255,255,255,0.40)';
+      pctx.lineWidth = 1.3;
+      pctx.beginPath();
+      pctx.moveTo(prj.x2px(-4), prj.y2py(0));
+      pctx.lineTo(prj.x2px(4), prj.y2py(0));
+      pctx.stroke();
+      pctx.beginPath();
+      pctx.moveTo(prj.x2px(0), prj.y2py(-4));
+      pctx.lineTo(prj.x2px(0), prj.y2py(4));
+      pctx.stroke();
+
+      const raw = rawLinearParams(m);
+      if (Math.abs(raw.a) + Math.abs(raw.b) > 1e-9) {
+        function drawIso(k, color, dash) {
+          pctx.setLineDash(dash);
+          pctx.strokeStyle = color;
+          pctx.lineWidth = k === 0 ? 2.3 : 1.3;
+          pctx.beginPath();
+          if (Math.abs(raw.b) > 1e-9) {
+            const yL = (k - raw.c - raw.a * -4) / raw.b;
+            const yR = (k - raw.c - raw.a * 4) / raw.b;
+            pctx.moveTo(prj.x2px(-4), prj.y2py(yL));
+            pctx.lineTo(prj.x2px(4), prj.y2py(yR));
+          } else {
+            const x = (k - raw.c) / raw.a;
+            pctx.moveTo(prj.x2px(x), prj.y2py(-4));
+            pctx.lineTo(prj.x2px(x), prj.y2py(4));
+          }
+          pctx.stroke();
+          pctx.setLineDash([]);
+        }
+        drawIso(0, 'rgba(255,255,255,0.95)', []);
+        drawIso(1, 'rgba(255,255,255,0.55)', [6, 6]);
+        drawIso(-1, 'rgba(255,255,255,0.55)', [6, 6]);
+      }
+
+      for (let i = 0; i < trainData.length; i += 1) {
+        const p = trainData[i];
+        const px = prj.x2px(p.x);
+        const py = prj.y2py(p.y);
+
+        pctx.fillStyle = p.label === 1 ? 'rgba(115,167,255,0.96)' : 'rgba(255,125,125,0.96)';
+        pctx.beginPath();
+        pctx.arc(px, py, p.flipped ? 4.8 : 4.1, 0, Math.PI * 2);
+        pctx.fill();
+
+        if (lastStep && lastStep.batchIdx.has(i)) {
+          pctx.strokeStyle = 'rgba(255,211,109,0.95)';
+          pctx.lineWidth = 1.7;
+          pctx.beginPath();
+          pctx.arc(px, py, 6.5, 0, Math.PI * 2);
+          pctx.stroke();
+        }
+
+        if (lastStep && lastStep.activeIdx.has(i)) {
+          pctx.strokeStyle = 'rgba(255,255,255,0.95)';
+          pctx.lineWidth = 1.2;
+          pctx.beginPath();
+          pctx.arc(px, py, 8.4, 0, Math.PI * 2);
+          pctx.stroke();
+        }
+      }
+
+      pctx.fillStyle = 'rgba(232,238,255,0.88)';
+      pctx.font = '12px "Hiragino Sans", sans-serif';
+      pctx.fillText('表示範囲 x,y ∈ [-4, 4]', prj.x2px(-3.95), h - 22);
+    }
+
+    function updateProcedure(now) {
+      const phaseLabels = [
+        '手順: 1/4 バッチ抽出とmargin',
+        '手順: 2/4 hingeと勾配',
+        '手順: 3/4 更新',
+        '手順: 4/4 評価'
+      ];
+
+      if (!lastStep) {
+        document.getElementById('phasePill').textContent = '手順: 待機中';
+        for (const item of procItems) item.classList.remove('active');
+        document.getElementById('detailBatch').textContent = '-';
+        document.getElementById('detailGrad').textContent = '-';
+        document.getElementById('detailUpdate').textContent = '-';
+        document.getElementById('detailCheck').textContent = '-';
+        return;
+      }
+
+      const phase = currentPhase(now);
+      document.getElementById('phasePill').textContent = phaseLabels[phase];
+      for (let i = 0; i < procItems.length; i += 1) {
+        procItems[i].classList.toggle('active', i === phase);
+      }
+
+      const preview = lastStep.batchInfo.slice(0, 8).map(v =>
+        `i=${v.idx} y=${v.label > 0 ? '+1' : '-1'} f=${v.score.toFixed(3)} margin=${v.margin.toFixed(3)} ${v.active ? '[active]' : ''}`
+      );
+
+      document.getElementById('detailBatch').textContent =
+        `意図: まず今回使うミニバッチを抽出し、各点の margin=y*f(x) を計算します。\n` +
+        `batch size=${lastStep.batchInfo.length}\n` +
+        `sample:\n${preview.join('\n')}`;
+
+      const active = lastStep.batchInfo.filter(v => v.active);
+      const activeLines = active.slice(0, 6).map(v =>
+        `-y*x = (${(-v.label * v.xz).toFixed(3)}, ${(-v.label * v.yz).toFixed(3)})`
+      );
+
+      document.getElementById('detailGrad').textContent =
+        `意図: margin<1 の点だけが hinge 勾配に寄与します。\n` +
+        `grad_w = w + C*(1/B) Σ(-y_i*x_i)\n` +
+        `grad_b = C*(1/B) Σ(-y_i)\n` +
+        `active=${active.length}/${lastStep.batchInfo.length}\n` +
+        `${activeLines.length ? activeLines.join('\n') : 'active点なし（正則化項のみ）'}\n` +
+        `=> grad_w=(${lastStep.gradW[0].toFixed(5)}, ${lastStep.gradW[1].toFixed(5)})\n` +
+        `=> grad_b=${lastStep.gradB.toFixed(5)}`;
+
+      document.getElementById('detailUpdate').textContent =
+        `意図: 負の勾配方向へ少し進めて objective を下げます。\n` +
+        `eta_t = ${lastStep.eta.toFixed(6)}\n` +
+        `w <- w - eta_t*grad_w\n` +
+        `b <- b - eta_t*grad_b\n` +
+        `w_old=(${lastStep.oldM.w[0].toFixed(5)}, ${lastStep.oldM.w[1].toFixed(5)})\n` +
+        `w_new=(${lastStep.newM.w[0].toFixed(5)}, ${lastStep.newM.w[1].toFixed(5)})\n` +
+        `b_old=${lastStep.oldM.b.toFixed(5)} -> b_new=${lastStep.newM.b.toFixed(5)}`;
+
+      document.getElementById('detailCheck').textContent =
+        `意図: 更新前後で objective と精度を比較し、更新が有効かを見る。\n` +
+        `obj_old=${lastStep.oldMetrics.objective.toFixed(6)}\n` +
+        `obj_new=${lastStep.newMetrics.objective.toFixed(6)}\n` +
+        `Δobj=${lastStep.deltaObj.toFixed(6)}\n` +
+        `trainAcc_old=${(lastStep.oldMetrics.trainAcc * 100).toFixed(2)}%\n` +
+        `trainAcc_new=${(lastStep.newMetrics.trainAcc * 100).toFixed(2)}%\n` +
+        `Δacc=${(lastStep.deltaAcc * 100).toFixed(2)}%`;
+    }
+
+    function updateUI(now) {
+      const s = sliders();
+      document.getElementById('cVal').textContent = s.C.toFixed(2);
+      document.getElementById('lrVal').textContent = s.lr.toFixed(3);
+      document.getElementById('decayVal').textContent = s.decay.toFixed(3);
+      document.getElementById('batchVal').textContent = `${s.batch}`;
+      document.getElementById('speedVal').textContent = `${s.speed}`;
+      document.getElementById('countVal').textContent = `${s.count}`;
+      document.getElementById('sepVal').textContent = s.sep.toFixed(1);
+      document.getElementById('noiseVal').textContent = s.noise.toFixed(2);
+      document.getElementById('flipVal').textContent = s.flip.toFixed(2);
+
+      document.getElementById('statePill').textContent = running ? '状態: 計算中' : '状態: 一時停止';
+
+      if (!metrics) return;
+
+      document.getElementById('stepVal').textContent = `${stepCount}`;
+      document.getElementById('objVal').textContent = metrics.objective.toFixed(5);
+      document.getElementById('hingeVal').textContent = metrics.hinge.toFixed(5);
+      document.getElementById('trainAccVal').textContent = `${(metrics.trainAcc * 100).toFixed(2)}%`;
+      document.getElementById('testAccVal').textContent = `${(metrics.testAcc * 100).toFixed(2)}%`;
+      document.getElementById('etaVal').textContent = (s.lr / (1 + s.decay * stepCount)).toFixed(6);
+      document.getElementById('activeVal').textContent = `${metrics.active}`;
+
+      const st = statusText();
+      const statusBox = document.getElementById('statusBox');
+      statusBox.className = `status ${st.level}`;
+      statusBox.textContent = `評価: ${st.text}`;
+
+      updateProcedure(now);
+    }
+
+    function frame(now) {
+      const dt = now - lastT;
+      lastT = now;
+
+      if (running) {
+        accMs += dt;
+        const stepMs = 1000 / Math.max(1, sliders().speed);
+        let guard = 0;
+        while (accMs >= stepMs && guard < 220) {
+          runOneStep('auto');
+          accMs -= stepMs;
+          guard += 1;
+        }
+      } else {
+        accMs = 0;
+      }
+
+      drawPlot(now);
+      updateUI(now);
+      requestAnimationFrame(frame);
+    }
+
+    document.getElementById('btnPlay').addEventListener('click', () => {
+      running = true;
+    });
+
+    document.getElementById('btnPause').addEventListener('click', () => {
+      running = false;
+    });
+
+    document.getElementById('btnStep').addEventListener('click', () => {
+      running = false;
+      runOneStep('manual');
+    });
+
+    document.getElementById('btnReset').addEventListener('click', () => {
+      running = false;
+      initializeModel();
+    });
+
+    document.getElementById('btnNew').addEventListener('click', () => {
+      running = false;
+      regenerateData();
+    });
+
+    datasetType.addEventListener('change', () => {
+      running = false;
+      regenerateData();
+    });
+
+    countRange.addEventListener('change', () => {
+      running = false;
+      regenerateData();
+    });
+
+    sepRange.addEventListener('change', () => {
+      running = false;
+      regenerateData();
+    });
+
+    noiseRange.addEventListener('change', () => {
+      running = false;
+      regenerateData();
+    });
+
+    flipRange.addEventListener('change', () => {
+      running = false;
+      regenerateData();
+    });
+
+    for (const r of ranges) {
+      r.addEventListener('input', () => updateUI(performance.now()));
+    }
+
+    regenerateData();
+    requestAnimationFrame(frame);
+  })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,1271 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SVMデータ分割シミュレータ</title>
+  <style>
+    :root {
+      --bg:#081326;
+      --panel:#0f1f3e;
+      --text:#e9efff;
+      --muted:#aab8de;
+      --line:#2b406e;
+      --pos:#73a7ff;
+      --neg:#ff7d7d;
+      --sv:#ffffff;
+      --warn:#ffd06b;
+      --good:#67d79a;
+      --bad:#ff8787;
+      --true:#6fdfa7;
+      --obj:#ffd974;
+      --hinge:#ff9ece;
+      --train:#7db1ff;
+      --test:#72e0a7;
+    }
+
+    * { box-sizing:border-box; }
+
+    body {
+      margin:0;
+      min-height:100vh;
+      color:var(--text);
+      font-family:"Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif;
+      background:
+        radial-gradient(circle at 12% 14%, rgba(115,167,255,0.17), transparent 34%),
+        radial-gradient(circle at 88% 10%, rgba(111,223,167,0.16), transparent 28%),
+        linear-gradient(180deg, #060f1d, var(--bg));
+    }
+
+    .top-nav {
+      max-width:1200px;
+      margin:14px auto 0;
+      padding:0 18px;
+    }
+
+    .top-link {
+      color:var(--muted);
+      text-decoration:none;
+      font-size:13px;
+    }
+
+    .top-link:hover {
+      color:var(--text);
+      text-decoration:underline;
+    }
+
+    .wrap {
+      max-width:1200px;
+      margin:0 auto;
+      padding:16px 18px 24px;
+      display:grid;
+      grid-template-columns:1.24fr 0.76fr;
+      gap:16px;
+    }
+
+    .card {
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,0.09);
+      background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+      padding:14px;
+      box-shadow:0 15px 32px rgba(0,0,0,0.35);
+    }
+
+    h1 {
+      margin:0 0 8px;
+      font-size:19px;
+      line-height:1.35;
+    }
+
+    .sub {
+      margin:0 0 12px;
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.65;
+    }
+
+    .pill {
+      display:inline-block;
+      padding:2px 8px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,0.13);
+      background:rgba(255,255,255,0.05);
+      color:var(--muted);
+      font-size:12px;
+    }
+
+    canvas {
+      width:100%;
+      height:auto;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,0.09);
+      background:rgba(4,10,24,0.45);
+    }
+
+    .legend {
+      margin-top:9px;
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      font-size:12px;
+      color:var(--muted);
+    }
+
+    .dot {
+      display:inline-block;
+      width:10px;
+      height:10px;
+      border-radius:50%;
+      margin-right:6px;
+      vertical-align:middle;
+    }
+
+    .mini-title {
+      margin:12px 0 7px;
+      font-size:13px;
+      color:var(--muted);
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+    }
+
+    .row {
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      align-items:center;
+    }
+
+    button {
+      cursor:pointer;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,0.16);
+      background:rgba(255,255,255,0.06);
+      color:var(--text);
+      font-size:13px;
+      padding:8px 10px;
+      transition:background .2s ease;
+    }
+
+    button:hover {
+      background:rgba(255,255,255,0.11);
+    }
+
+    button.primary {
+      border-color:rgba(115,167,255,0.58);
+      background:rgba(115,167,255,0.21);
+    }
+
+    button.primary:hover {
+      background:rgba(115,167,255,0.28);
+    }
+
+    .selectrow {
+      display:grid;
+      grid-template-columns:100px 1fr;
+      gap:10px;
+      margin:8px 0;
+      align-items:center;
+      font-size:13px;
+    }
+
+    select {
+      width:100%;
+      border-radius:9px;
+      border:1px solid rgba(255,255,255,0.15);
+      background:rgba(255,255,255,0.06);
+      color:var(--text);
+      padding:7px 8px;
+      font-size:13px;
+    }
+
+    .slider {
+      margin:10px 0;
+      display:grid;
+      grid-template-columns:132px 1fr 84px;
+      gap:10px;
+      align-items:center;
+      font-size:13px;
+    }
+
+    input[type="range"] {
+      width:100%;
+      accent-color:#75a8ff;
+    }
+
+    .hr {
+      height:1px;
+      margin:12px 0;
+      background:rgba(255,255,255,0.11);
+    }
+
+    .kv {
+      display:grid;
+      grid-template-columns:1fr auto;
+      gap:8px 10px;
+      font-size:13px;
+    }
+
+    .kv div:nth-child(odd) {
+      color:var(--muted);
+    }
+
+    .status {
+      margin-top:8px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,0.1);
+      background:rgba(0,0,0,0.2);
+      padding:10px;
+      font-size:13px;
+      line-height:1.55;
+    }
+
+    .status.good {
+      border-color:rgba(103,215,154,0.52);
+      background:rgba(103,215,154,0.12);
+    }
+
+    .status.warn {
+      border-color:rgba(255,208,107,0.52);
+      background:rgba(255,208,107,0.12);
+    }
+
+    .status.bad {
+      border-color:rgba(255,135,135,0.55);
+      background:rgba(255,135,135,0.12);
+    }
+
+    .detail {
+      margin-top:8px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,0.09);
+      background:rgba(2,8,20,0.55);
+      padding:8px;
+      color:#d8e2ff;
+      font-size:12px;
+      font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      white-space:pre;
+      max-height:160px;
+      overflow:auto;
+    }
+
+    .formula {
+      margin-top:8px;
+      border-radius:8px;
+      border:1px solid rgba(255,255,255,0.08);
+      background:rgba(8,16,32,0.55);
+      padding:8px;
+      color:#dce5ff;
+      font-size:12px;
+      line-height:1.55;
+    }
+
+    .note {
+      margin:10px 0 0;
+      color:var(--muted);
+      font-size:12px;
+      line-height:1.6;
+    }
+
+    @media (max-width: 990px) {
+      .wrap { grid-template-columns:1fr; }
+      .slider { grid-template-columns:110px 1fr 84px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="top-nav">
+    <a class="top-link" href="index.html">← 新卒AI研修トップへ戻る</a>
+  </div>
+
+  <div class="wrap">
+    <section class="card">
+      <h1>SVMデータ分割シミュレータ</h1>
+      <p class="sub">
+        クラスタっぽく見える2クラスデータを、
+        <span class="pill">SVM (最大マージン分類)</span> でどのように分割するかを可視化します。
+        <span class="pill">C</span>、<span class="pill">カーネル</span>、<span class="pill">γ</span>、
+        <span class="pill">ノイズ</span>を変えて、境界と誤分類の変化を確認してください。
+      </p>
+
+      <canvas id="plot" width="860" height="510"></canvas>
+
+      <div class="legend">
+        <span><span class="dot" style="background:var(--pos)"></span>クラス +1</span>
+        <span><span class="dot" style="background:var(--neg)"></span>クラス -1</span>
+        <span><span class="dot" style="background:#fff"></span>サポートベクトル候補（y f(x) ≤ 1）</span>
+        <span><span class="dot" style="background:rgba(255,208,107,0.9)"></span>ラベル反転点</span>
+      </div>
+
+      <div class="mini-title">
+        <span>学習の推移（Objective / Hinge / Error）</span>
+        <span class="pill" id="modePill">モード: 学習中</span>
+      </div>
+      <canvas id="lossPlot" width="860" height="190"></canvas>
+    </section>
+
+    <section class="card">
+      <div class="row" style="justify-content:space-between;">
+        <div style="font-size:14px; font-weight:700;">操作パネル</div>
+        <div class="pill" id="statePill">状態: 計算中</div>
+      </div>
+
+      <div class="row" style="margin-top:10px;">
+        <button class="primary" id="btnPlay">再生</button>
+        <button id="btnPause">停止</button>
+        <button id="btnStep">1ステップ</button>
+        <button id="btnReset">モデル初期化</button>
+        <button id="btnNew">データ再生成</button>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="selectrow">
+        <div>データ形状</div>
+        <select id="datasetType">
+          <option value="blobs">2ガウス塊（線形に近い）</option>
+          <option value="moons">2つの月（非線形）</option>
+          <option value="xor">XOR 4塊（非線形）</option>
+        </select>
+      </div>
+
+      <div class="selectrow">
+        <div>カーネル</div>
+        <select id="kernelType">
+          <option value="linear">線形カーネル</option>
+          <option value="rbf">RBF（ランダム特徴近似）</option>
+        </select>
+      </div>
+
+      <div class="slider">
+        <div>正則化 C</div>
+        <input id="cRange" type="range" min="0.05" max="8.00" step="0.05" value="1.20" />
+        <div id="cVal">1.20</div>
+      </div>
+
+      <div class="slider">
+        <div>学習率 η</div>
+        <input id="lrRange" type="range" min="0.001" max="0.120" step="0.001" value="0.028" />
+        <div id="lrVal">0.028</div>
+      </div>
+
+      <div class="slider">
+        <div>ミニバッチ</div>
+        <input id="batchRange" type="range" min="4" max="128" step="1" value="24" />
+        <div id="batchVal">24</div>
+      </div>
+
+      <div class="slider">
+        <div>学習率減衰 ρ</div>
+        <input id="decayRange" type="range" min="0.000" max="0.050" step="0.001" value="0.010" />
+        <div id="decayVal">0.010</div>
+      </div>
+
+      <div class="slider">
+        <div>更新/秒</div>
+        <input id="speedRange" type="range" min="1" max="180" step="1" value="28" />
+        <div id="speedVal">28</div>
+      </div>
+
+      <div class="slider">
+        <div>点の数</div>
+        <input id="countRange" type="range" min="20" max="260" step="2" value="120" />
+        <div id="countVal">120</div>
+      </div>
+
+      <div class="slider">
+        <div>クラス間隔</div>
+        <input id="sepRange" type="range" min="0.6" max="3.4" step="0.1" value="2.0" />
+        <div id="sepVal">2.0</div>
+      </div>
+
+      <div class="slider">
+        <div>ノイズ σ</div>
+        <input id="noiseRange" type="range" min="0.05" max="1.25" step="0.01" value="0.35" />
+        <div id="noiseVal">0.35</div>
+      </div>
+
+      <div class="slider">
+        <div>ラベル反転率</div>
+        <input id="flipRange" type="range" min="0.00" max="0.30" step="0.01" value="0.03" />
+        <div id="flipVal">0.03</div>
+      </div>
+
+      <div class="slider">
+        <div>RBF γ</div>
+        <input id="gammaRange" type="range" min="0.20" max="6.00" step="0.05" value="1.20" />
+        <div id="gammaVal">1.20</div>
+      </div>
+
+      <div class="slider">
+        <div>RFF次元 D</div>
+        <input id="dimRange" type="range" min="20" max="260" step="4" value="96" />
+        <div id="dimVal">96</div>
+      </div>
+
+      <div class="formula">
+        最適化目標: <code>0.5||w||² + C · mean(max(0, 1 - y·f(x)))</code><br>
+        更新: <code>ミニバッチSGD（ヒンジ + L2）, η_t = min( η/(1+ρt), C/t )</code>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="kv">
+        <div>学習ステップ</div><div id="stepVal">0</div>
+        <div>Objective</div><div id="objVal">-</div>
+        <div>平均Hinge</div><div id="hingeVal">-</div>
+        <div>実効 C (C×N)</div><div id="cEffVal">-</div>
+        <div>有効学習率 η_t</div><div id="etaNowVal">-</div>
+        <div>Train Accuracy</div><div id="trainAccVal">-</div>
+        <div>Test Accuracy</div><div id="testAccVal">-</div>
+        <div>境界違反数 (margin&lt;1)</div><div id="violVal">-</div>
+        <div>SV候補数 (margin≤1)</div><div id="svVal">-</div>
+        <div>||w||</div><div id="normVal">-</div>
+        <div>線形マージン幅 2/||w||</div><div id="marginVal">-</div>
+      </div>
+
+      <div id="statusBox" class="status">評価: 初期化中...</div>
+
+      <div class="hr"></div>
+      <div style="font-size:13px; color:var(--muted);">現在のモデル</div>
+      <div class="detail" id="modelDetail">-</div>
+
+      <p class="note">
+        学習のコツ: `moons`/`xor` で線形カーネルを選ぶと分割しきれません。
+        `RBF`へ切り替え、`γ` と `C` を調整すると非線形境界で改善します。
+        入力は内部で標準化し、学習はミニバッチ＋減衰学習率で安定化しています。
+      </p>
+    </section>
+  </div>
+
+  <script>
+  (() => {
+    function randn() {
+      let u = 0;
+      let v = 0;
+      while (u === 0) u = Math.random();
+      while (v === 0) v = Math.random();
+      return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+    }
+
+    function clamp(v, lo, hi) {
+      return Math.min(hi, Math.max(lo, v));
+    }
+
+    function dot(a, b) {
+      let s = 0;
+      for (let i = 0; i < a.length; i += 1) s += a[i] * b[i];
+      return s;
+    }
+
+    function samplePoint(type, label, sep, noise) {
+      if (type === 'blobs') {
+        const cx = label === 1 ? sep * 0.8 : -sep * 0.8;
+        const cy = label === 1 ? sep * 0.12 : -sep * 0.12;
+        return {
+          x: cx + randn() * noise,
+          y: cy + randn() * noise
+        };
+      }
+
+      if (type === 'moons') {
+        const t = Math.random() * Math.PI;
+        let x;
+        let y;
+        if (label === 1) {
+          x = Math.cos(t);
+          y = Math.sin(t);
+        } else {
+          x = 1 - Math.cos(t);
+          y = -Math.sin(t) - 0.5;
+        }
+        const scale = 2.0 + sep * 0.36;
+        x = (x - 0.55) * scale + (label === 1 ? -sep * 0.22 : sep * 0.22);
+        y = (y - 0.08) * scale;
+        x += randn() * noise;
+        y += randn() * noise;
+        return { x, y };
+      }
+
+      const signX = Math.random() < 0.5 ? -1 : 1;
+      const signY = Math.random() < 0.5 ? -1 : 1;
+      const x = signX * sep * 0.9 + randn() * noise;
+      const y = signY * sep * 0.9 + randn() * noise;
+      const trueLabel = signX === signY ? 1 : -1;
+      return { x, y, trueLabel };
+    }
+
+    function generateDataset(type, count, sep, noise, flipRate) {
+      const points = [];
+      for (let i = 0; i < count; i += 1) {
+        let trueLabel = i < count / 2 ? 1 : -1;
+        let sample;
+        if (type === 'xor') {
+          sample = samplePoint(type, 0, sep, noise);
+          trueLabel = sample.trueLabel;
+        } else {
+          sample = samplePoint(type, trueLabel, sep, noise);
+        }
+
+        let label = trueLabel;
+        let flipped = false;
+        if (Math.random() < flipRate) {
+          label *= -1;
+          flipped = true;
+        }
+
+        points.push({
+          x: sample.x,
+          y: sample.y,
+          trueLabel,
+          label,
+          flipped,
+          phi: [],
+          score: 0
+        });
+      }
+      return points;
+    }
+
+    const plot = document.getElementById('plot');
+    const pctx = plot.getContext('2d');
+    const lossPlot = document.getElementById('lossPlot');
+    const lctx = lossPlot.getContext('2d');
+
+    const datasetType = document.getElementById('datasetType');
+    const kernelType = document.getElementById('kernelType');
+
+    const cRange = document.getElementById('cRange');
+    const lrRange = document.getElementById('lrRange');
+    const batchRange = document.getElementById('batchRange');
+    const decayRange = document.getElementById('decayRange');
+    const speedRange = document.getElementById('speedRange');
+    const countRange = document.getElementById('countRange');
+    const sepRange = document.getElementById('sepRange');
+    const noiseRange = document.getElementById('noiseRange');
+    const flipRange = document.getElementById('flipRange');
+    const gammaRange = document.getElementById('gammaRange');
+    const dimRange = document.getElementById('dimRange');
+
+    const ranges = [cRange, lrRange, batchRange, decayRange, speedRange, countRange, sepRange, noiseRange, flipRange, gammaRange, dimRange];
+
+    let trainData = [];
+    let testData = [];
+    let running = true;
+    let stepCount = 0;
+    let history = [];
+    let lastT = performance.now();
+    let accMs = 0;
+
+    let model = { w: [], b: 0 };
+    let rff = { wx: [], wy: [], phase: [], dim: parseInt(dimRange.value, 10), gamma: parseFloat(gammaRange.value) };
+    let scaler = { mx: 0, my: 0, sx: 1, sy: 1 };
+    let learningState = { lrScale: 1 };
+
+    let metrics = {
+      objective: 0,
+      hinge: 0,
+      trainAcc: 0,
+      testAcc: 0,
+      viol: 0,
+      support: 0,
+      norm: 0,
+      marginWidth: null,
+      cEff: 0,
+      etaNow: 0
+    };
+
+    const maxHistory = 280;
+
+    function sliders() {
+      return {
+        type: datasetType.value,
+        kernel: kernelType.value,
+        C: parseFloat(cRange.value),
+        lr: parseFloat(lrRange.value),
+        batch: parseInt(batchRange.value, 10),
+        decay: parseFloat(decayRange.value),
+        speed: parseInt(speedRange.value, 10),
+        count: parseInt(countRange.value, 10),
+        sep: parseFloat(sepRange.value),
+        noise: parseFloat(noiseRange.value),
+        flip: parseFloat(flipRange.value),
+        gamma: parseFloat(gammaRange.value),
+        dim: parseInt(dimRange.value, 10)
+      };
+    }
+
+    function initRFF(gamma, dim) {
+      rff.dim = dim;
+      rff.gamma = gamma;
+      rff.wx = [];
+      rff.wy = [];
+      rff.phase = [];
+
+      const sigma = Math.sqrt(2 * gamma);
+      for (let i = 0; i < dim; i += 1) {
+        rff.wx.push(randn() * sigma);
+        rff.wy.push(randn() * sigma);
+        rff.phase.push(Math.random() * Math.PI * 2);
+      }
+    }
+
+    function fitStandardScaler(points) {
+      const n = Math.max(1, points.length);
+      let sx = 0;
+      let sy = 0;
+      for (const p of points) {
+        sx += p.x;
+        sy += p.y;
+      }
+      const mx = sx / n;
+      const my = sy / n;
+
+      let vx = 0;
+      let vy = 0;
+      for (const p of points) {
+        const dx = p.x - mx;
+        const dy = p.y - my;
+        vx += dx * dx;
+        vy += dy * dy;
+      }
+      scaler = {
+        mx,
+        my,
+        sx: Math.sqrt(vx / n) + 1e-6,
+        sy: Math.sqrt(vy / n) + 1e-6
+      };
+    }
+
+    function normalizeXY(x, y) {
+      return {
+        xz: (x - scaler.mx) / scaler.sx,
+        yz: (y - scaler.my) / scaler.sy
+      };
+    }
+
+    function currentEta() {
+      const s = sliders();
+      const t = Math.max(1, stepCount + 1);
+      const decayEta = s.lr / (1 + s.decay * stepCount);
+      const pegasosLikeEta = s.C / t;
+      return Math.max(1e-6, Math.min(decayEta, pegasosLikeEta) * learningState.lrScale);
+    }
+
+    function pickBatchIndices(n, batchSize) {
+      const idx = new Array(n);
+      for (let i = 0; i < n; i += 1) idx[i] = i;
+      const b = Math.min(n, Math.max(1, batchSize));
+      for (let i = 0; i < b; i += 1) {
+        const j = i + Math.floor(Math.random() * (n - i));
+        const tmp = idx[i];
+        idx[i] = idx[j];
+        idx[j] = tmp;
+      }
+      return idx.slice(0, b);
+    }
+
+    function featureXY(xz, yz) {
+      const k = kernelType.value;
+      if (k === 'linear') {
+        return [xz, yz];
+      }
+
+      const dim = rff.dim;
+      const scale = Math.sqrt(2 / dim);
+      const phi = new Array(dim);
+      for (let i = 0; i < dim; i += 1) {
+        phi[i] = scale * Math.cos(rff.wx[i] * xz + rff.wy[i] * yz + rff.phase[i]);
+      }
+      return phi;
+    }
+
+    function rebuildFeatures() {
+      for (const p of trainData) {
+        const nxy = normalizeXY(p.x, p.y);
+        p.xz = nxy.xz;
+        p.yz = nxy.yz;
+        p.phi = featureXY(p.xz, p.yz);
+      }
+      for (const p of testData) {
+        const nxy = normalizeXY(p.x, p.y);
+        p.xz = nxy.xz;
+        p.yz = nxy.yz;
+        p.phi = featureXY(p.xz, p.yz);
+      }
+    }
+
+    function scorePhi(phi) {
+      return dot(model.w, phi) + model.b;
+    }
+
+    function scoreXY(x, y) {
+      const nxy = normalizeXY(x, y);
+      return scorePhi(featureXY(nxy.xz, nxy.yz));
+    }
+
+    function initializeModel() {
+      const dim = kernelType.value === 'linear' ? 2 : rff.dim;
+      const initStd = 0.02;
+      model = {
+        w: new Array(dim).fill(0).map(() => randn() * initStd),
+        b: randn() * initStd
+      };
+      learningState.lrScale = 1;
+      stepCount = 0;
+      history = [];
+      evaluate(false);
+      pushHistory();
+    }
+
+    function regenerateData() {
+      const s = sliders();
+      const trainN = s.count;
+      const testN = Math.max(180, Math.floor(trainN * 2.2));
+
+      trainData = generateDataset(s.type, trainN, s.sep, s.noise, s.flip);
+      testData = generateDataset(s.type, testN, s.sep, s.noise, 0);
+      fitStandardScaler(trainData);
+
+      if (s.kernel === 'rbf') {
+        initRFF(s.gamma, s.dim);
+      }
+      rebuildFeatures();
+      initializeModel();
+    }
+
+    function rebuildKernelAndModel() {
+      const s = sliders();
+      if (s.kernel === 'rbf') {
+        initRFF(s.gamma, s.dim);
+      }
+      rebuildFeatures();
+      initializeModel();
+    }
+
+    function evaluate(push) {
+      const s = sliders();
+      const n = Math.max(1, trainData.length);
+      let hingeSum = 0;
+      let correct = 0;
+      let viol = 0;
+      let support = 0;
+
+      for (const p of trainData) {
+        const f = scorePhi(p.phi);
+        p.score = f;
+        const y = p.label;
+        const margin = y * f;
+        if ((f >= 0 ? 1 : -1) === y) correct += 1;
+        if (margin <= 1) support += 1;
+        if (margin < 1) {
+          viol += 1;
+          hingeSum += 1 - margin;
+        }
+      }
+
+      let testCorrect = 0;
+      for (const p of testData) {
+        const f = scorePhi(p.phi);
+        p.score = f;
+        if ((f >= 0 ? 1 : -1) === p.trueLabel) testCorrect += 1;
+      }
+
+      const normSq = dot(model.w, model.w);
+      const hinge = hingeSum / n;
+      const objective = 0.5 * normSq + s.C * hinge;
+
+      metrics = {
+        objective,
+        hinge,
+        trainAcc: correct / n,
+        testAcc: testCorrect / Math.max(1, testData.length),
+        viol,
+        support,
+        norm: Math.sqrt(normSq),
+        marginWidth: kernelType.value === 'linear' ? 2 / Math.max(1e-8, Math.sqrt(normSq)) : null,
+        cEff: s.C * n,
+        etaNow: currentEta()
+      };
+
+      if (push) {
+        pushHistory();
+      }
+    }
+
+    function pushHistory() {
+      history.push({
+        objective: metrics.objective,
+        hinge: metrics.hinge,
+        trainErr: 1 - metrics.trainAcc,
+        testErr: 1 - metrics.testAcc
+      });
+      if (history.length > maxHistory) {
+        history = history.slice(history.length - maxHistory);
+      }
+    }
+
+    function optimizeOneStep() {
+      const s = sliders();
+      const n = trainData.length;
+      if (n === 0) return;
+      const d = model.w.length;
+      const gradW = model.w.slice();
+      let gradB = 0;
+      const batchIdx = pickBatchIndices(n, s.batch);
+      const batchN = Math.max(1, batchIdx.length);
+
+      for (const idx of batchIdx) {
+        const p = trainData[idx];
+        const f = scorePhi(p.phi);
+        const margin = p.label * f;
+        if (margin < 1) {
+          const coeff = (-s.C * p.label) / batchN;
+          for (let j = 0; j < d; j += 1) {
+            gradW[j] += coeff * p.phi[j];
+          }
+          gradB += coeff;
+        }
+      }
+
+      const eta = currentEta();
+      const prevW = model.w.slice();
+      const prevB = model.b;
+
+      for (let j = 0; j < d; j += 1) {
+        model.w[j] -= eta * gradW[j];
+      }
+      model.b -= eta * gradB;
+
+      const norm = Math.sqrt(dot(model.w, model.w));
+      const stable = Number.isFinite(norm) && Number.isFinite(model.b) && norm < 1e5 && Math.abs(model.b) < 1e5;
+      if (!stable) {
+        model.w = prevW;
+        model.b = prevB;
+        learningState.lrScale = Math.max(0.05, learningState.lrScale * 0.5);
+      } else {
+        stepCount += 1;
+        learningState.lrScale = Math.min(1, learningState.lrScale * 1.001);
+      }
+
+      evaluate(true);
+    }
+
+    function projectors(width, height) {
+      const pad = 56;
+      const xMin = -4;
+      const xMax = 4;
+      const yMin = -4;
+      const yMax = 4;
+      const x2px = x => pad + ((x - xMin) * (width - 2 * pad)) / (xMax - xMin);
+      const y2py = y => height - pad - ((y - yMin) * (height - 2 * pad)) / (yMax - yMin);
+      const px2x = px => xMin + ((px - pad) * (xMax - xMin)) / (width - 2 * pad);
+      const py2y = py => yMin + ((height - pad - py) * (yMax - yMin)) / (height - 2 * pad);
+      return { pad, xMin, xMax, yMin, yMax, x2px, y2py, px2x, py2y };
+    }
+
+    function drawDecisionBackground(prj) {
+      const gridX = 88;
+      const gridY = 68;
+      const dx = (plot.width - 2 * prj.pad) / gridX;
+      const dy = (plot.height - 2 * prj.pad) / gridY;
+
+      for (let gx = 0; gx < gridX; gx += 1) {
+        for (let gy = 0; gy < gridY; gy += 1) {
+          const px = prj.pad + gx * dx + dx * 0.5;
+          const py = prj.pad + gy * dy + dy * 0.5;
+          const x = prj.px2x(px);
+          const y = prj.py2y(py);
+          const f = scoreXY(x, y);
+          const alpha = clamp(0.10 + Math.min(0.14, Math.abs(f) * 0.03), 0.1, 0.24);
+          pctx.fillStyle = f >= 0 ? `rgba(115,167,255,${alpha})` : `rgba(255,125,125,${alpha})`;
+          pctx.fillRect(prj.pad + gx * dx, prj.pad + gy * dy, dx + 0.5, dy + 0.5);
+        }
+      }
+    }
+
+    function drawLinearLines(prj) {
+      if (kernelType.value !== 'linear') return;
+
+      const wzx = model.w[0];
+      const wzy = model.w[1];
+      const a = wzx / scaler.sx;
+      const b = wzy / scaler.sy;
+      const c = model.b - (wzx * scaler.mx) / scaler.sx - (wzy * scaler.my) / scaler.sy;
+      if (Math.abs(a) + Math.abs(b) < 1e-8) return;
+
+      function drawIso(k, color, dash) {
+        pctx.setLineDash(dash);
+        pctx.strokeStyle = color;
+        pctx.lineWidth = k === 0 ? 2.4 : 1.4;
+        pctx.beginPath();
+
+        if (Math.abs(b) > 1e-8) {
+          const yL = (k - c - a * prj.xMin) / b;
+          const yR = (k - c - a * prj.xMax) / b;
+          pctx.moveTo(prj.x2px(prj.xMin), prj.y2py(yL));
+          pctx.lineTo(prj.x2px(prj.xMax), prj.y2py(yR));
+        } else {
+          const x = (k - c) / a;
+          pctx.moveTo(prj.x2px(x), prj.y2py(prj.yMin));
+          pctx.lineTo(prj.x2px(x), prj.y2py(prj.yMax));
+        }
+
+        pctx.stroke();
+        pctx.setLineDash([]);
+      }
+
+      drawIso(0, 'rgba(255,255,255,0.92)', []);
+      drawIso(1, 'rgba(255,255,255,0.55)', [6, 6]);
+      drawIso(-1, 'rgba(255,255,255,0.55)', [6, 6]);
+    }
+
+    function drawPlot() {
+      const w = plot.width;
+      const h = plot.height;
+      const prj = projectors(w, h);
+
+      pctx.clearRect(0, 0, w, h);
+      pctx.fillStyle = 'rgba(7,14,30,0.55)';
+      pctx.fillRect(prj.pad, prj.pad, w - 2 * prj.pad, h - 2 * prj.pad);
+
+      drawDecisionBackground(prj);
+
+      pctx.strokeStyle = 'rgba(255,255,255,0.10)';
+      pctx.lineWidth = 1;
+      for (let i = 0; i <= 8; i += 1) {
+        const x = prj.xMin + (i * (prj.xMax - prj.xMin)) / 8;
+        pctx.beginPath();
+        pctx.moveTo(prj.x2px(x), prj.y2py(prj.yMin));
+        pctx.lineTo(prj.x2px(x), prj.y2py(prj.yMax));
+        pctx.stroke();
+      }
+      for (let i = 0; i <= 8; i += 1) {
+        const y = prj.yMin + (i * (prj.yMax - prj.yMin)) / 8;
+        pctx.beginPath();
+        pctx.moveTo(prj.x2px(prj.xMin), prj.y2py(y));
+        pctx.lineTo(prj.x2px(prj.xMax), prj.y2py(y));
+        pctx.stroke();
+      }
+
+      pctx.strokeStyle = 'rgba(255,255,255,0.40)';
+      pctx.lineWidth = 1.3;
+      pctx.beginPath();
+      pctx.moveTo(prj.x2px(prj.xMin), prj.y2py(0));
+      pctx.lineTo(prj.x2px(prj.xMax), prj.y2py(0));
+      pctx.stroke();
+      pctx.beginPath();
+      pctx.moveTo(prj.x2px(0), prj.y2py(prj.yMin));
+      pctx.lineTo(prj.x2px(0), prj.y2py(prj.yMax));
+      pctx.stroke();
+
+      drawLinearLines(prj);
+
+      for (const p of trainData) {
+        const px = prj.x2px(p.x);
+        const py = prj.y2py(p.y);
+        const margin = p.label * p.score;
+
+        pctx.fillStyle = p.label === 1 ? 'rgba(115,167,255,0.96)' : 'rgba(255,125,125,0.96)';
+        pctx.beginPath();
+        pctx.arc(px, py, p.flipped ? 4.8 : 4.1, 0, Math.PI * 2);
+        pctx.fill();
+
+        if (p.flipped) {
+          pctx.strokeStyle = 'rgba(255,208,107,0.95)';
+          pctx.lineWidth = 1.6;
+          pctx.beginPath();
+          pctx.arc(px, py, 6.2, 0, Math.PI * 2);
+          pctx.stroke();
+        }
+
+        if (margin <= 1.0) {
+          pctx.strokeStyle = 'rgba(255,255,255,0.93)';
+          pctx.lineWidth = 1.2;
+          pctx.beginPath();
+          pctx.arc(px, py, 7.8, 0, Math.PI * 2);
+          pctx.stroke();
+        }
+      }
+
+      pctx.fillStyle = 'rgba(232,238,255,0.88)';
+      pctx.font = '12px "Hiragino Sans", sans-serif';
+      pctx.fillText('表示範囲 x,y ∈ [-4, 4]', prj.x2px(-3.95), h - 22);
+    }
+
+    function drawLoss() {
+      const w = lossPlot.width;
+      const h = lossPlot.height;
+      const pad = 42;
+
+      lctx.clearRect(0, 0, w, h);
+      lctx.fillStyle = 'rgba(7,14,30,0.55)';
+      lctx.fillRect(pad, 16, w - 2 * pad, h - 30);
+
+      if (history.length < 2) {
+        lctx.fillStyle = 'rgba(225,233,255,0.82)';
+        lctx.font = '12px "Hiragino Sans", sans-serif';
+        lctx.fillText('学習を進めると Objective / Hinge / Error の推移を表示します。', pad + 8, 38);
+        return;
+      }
+
+      const yValues = [];
+      for (const e of history) {
+        yValues.push(e.objective, e.hinge, e.trainErr, e.testErr);
+      }
+      const yMin = 0;
+      const yMax = Math.max(0.35, Math.max(...yValues) * 1.1);
+
+      const x2px = i => pad + (i * (w - 2 * pad)) / (history.length - 1);
+      const y2py = v => (h - 14) - ((v - yMin) * (h - 34)) / Math.max(1e-8, yMax - yMin);
+
+      lctx.strokeStyle = 'rgba(255,255,255,0.12)';
+      lctx.lineWidth = 1;
+      for (let i = 0; i <= 4; i += 1) {
+        const y = yMin + (i * (yMax - yMin)) / 4;
+        lctx.beginPath();
+        lctx.moveTo(pad, y2py(y));
+        lctx.lineTo(w - pad, y2py(y));
+        lctx.stroke();
+      }
+
+      function lineOf(getter, color) {
+        lctx.strokeStyle = color;
+        lctx.lineWidth = 2;
+        lctx.beginPath();
+        for (let i = 0; i < history.length; i += 1) {
+          const y = getter(history[i]);
+          if (i === 0) lctx.moveTo(x2px(i), y2py(y));
+          else lctx.lineTo(x2px(i), y2py(y));
+        }
+        lctx.stroke();
+      }
+
+      lineOf(e => e.objective, 'rgba(255,217,116,0.98)');
+      lineOf(e => e.hinge, 'rgba(255,158,206,0.95)');
+      lineOf(e => e.trainErr, 'rgba(125,177,255,0.95)');
+      lineOf(e => e.testErr, 'rgba(114,224,167,0.95)');
+
+      lctx.fillStyle = 'rgba(230,237,255,0.88)';
+      lctx.font = '11px "Hiragino Sans", sans-serif';
+      lctx.fillText('Objective', pad + 8, 28);
+      lctx.fillText('Hinge', pad + 74, 28);
+      lctx.fillText('Train Err', pad + 124, 28);
+      lctx.fillText('Test Err', pad + 193, 28);
+      lctx.fillText(`最新: obj=${metrics.objective.toFixed(4)} hinge=${metrics.hinge.toFixed(4)} trainErr=${(1 - metrics.trainAcc).toFixed(4)} testErr=${(1 - metrics.testAcc).toFixed(4)}`, pad + 8, h - 8);
+    }
+
+    function statusText() {
+      const gap = metrics.trainAcc - metrics.testAcc;
+      if (learningState.lrScale < 0.45) {
+        return {
+          level: 'warn',
+          text: '学習が不安定だったため内部で学習率を下げています。ηやCを少し下げると安定しやすくなります。'
+        };
+      }
+      if (metrics.trainAcc > 0.94 && metrics.testAcc < 0.80) {
+        return {
+          level: 'bad',
+          text: '過学習傾向です。訓練精度は高い一方でテスト精度が低く、境界が複雑すぎる可能性があります。'
+        };
+      }
+      if (metrics.trainAcc < 0.78 && metrics.testAcc < 0.78) {
+        return {
+          level: 'warn',
+          text: '分離能力が不足しています。カーネル変更、C増加、データ形状見直しを試してください。'
+        };
+      }
+      if (gap > 0.08) {
+        return {
+          level: 'warn',
+          text: '訓練とテストにやや差があります。Cやγを下げると改善する場合があります。'
+        };
+      }
+      return {
+        level: 'good',
+        text: '訓練とテストのバランスは良好です。マージンと誤分類の折り合いが取れています。'
+      };
+    }
+
+    function updateUI() {
+      const s = sliders();
+
+      document.getElementById('cVal').textContent = s.C.toFixed(2);
+      document.getElementById('lrVal').textContent = s.lr.toFixed(3);
+      document.getElementById('batchVal').textContent = `${s.batch}`;
+      document.getElementById('decayVal').textContent = s.decay.toFixed(3);
+      document.getElementById('speedVal').textContent = `${s.speed}`;
+      document.getElementById('countVal').textContent = `${s.count}`;
+      document.getElementById('sepVal').textContent = s.sep.toFixed(1);
+      document.getElementById('noiseVal').textContent = s.noise.toFixed(2);
+      document.getElementById('flipVal').textContent = s.flip.toFixed(2);
+      document.getElementById('gammaVal').textContent = s.gamma.toFixed(2);
+      document.getElementById('dimVal').textContent = `${s.dim}`;
+
+      document.getElementById('modePill').textContent = running ? 'モード: 学習中' : 'モード: 停止中';
+      document.getElementById('statePill').textContent = running ? '状態: 計算中' : '状態: 一時停止';
+
+      document.getElementById('stepVal').textContent = `${stepCount}`;
+      document.getElementById('objVal').textContent = metrics.objective.toFixed(5);
+      document.getElementById('hingeVal').textContent = metrics.hinge.toFixed(5);
+      document.getElementById('cEffVal').textContent = metrics.cEff.toFixed(2);
+      document.getElementById('etaNowVal').textContent = metrics.etaNow.toFixed(5);
+      document.getElementById('trainAccVal').textContent = `${(metrics.trainAcc * 100).toFixed(2)}%`;
+      document.getElementById('testAccVal').textContent = `${(metrics.testAcc * 100).toFixed(2)}%`;
+      document.getElementById('violVal').textContent = `${metrics.viol}`;
+      document.getElementById('svVal').textContent = `${metrics.support}`;
+      document.getElementById('normVal').textContent = metrics.norm.toFixed(4);
+      document.getElementById('marginVal').textContent = metrics.marginWidth ? metrics.marginWidth.toFixed(4) : '非線形では定義しにくい';
+
+      const st = statusText();
+      const statusBox = document.getElementById('statusBox');
+      statusBox.className = `status ${st.level}`;
+      statusBox.textContent = `評価: ${st.text}`;
+
+      const lines = [];
+      if (kernelType.value === 'linear') {
+        const rawAx = model.w[0] / scaler.sx;
+        const rawAy = model.w[1] / scaler.sy;
+        const rawB = model.b - (model.w[0] * scaler.mx) / scaler.sx - (model.w[1] * scaler.my) / scaler.sy;
+        lines.push(`kernel = linear`);
+        lines.push(`f(zx,zy) = ${model.w[0].toFixed(4)} * zx + ${model.w[1].toFixed(4)} * zy + ${model.b.toFixed(4)}`);
+        lines.push(`raw-space: f(x,y) = ${rawAx.toFixed(4)} * x + ${rawAy.toFixed(4)} * y + ${rawB.toFixed(4)}`);
+      } else {
+        lines.push(`kernel = rbf (random Fourier features)`);
+        lines.push(`gamma = ${s.gamma.toFixed(3)}, D = ${s.dim}`);
+        lines.push(`f(x,y) = w · phi(x,y) + b`);
+        lines.push('--- first coefficients ---');
+        const showN = Math.min(18, model.w.length);
+        for (let i = 0; i < showN; i += 1) {
+          lines.push(`w${String(i).padStart(2, '0')} = ${model.w[i].toFixed(5)}`);
+        }
+        lines.push(`b = ${model.b.toFixed(5)}`);
+      }
+      lines.push('--- preprocessing ---');
+      lines.push(`x': (x - ${scaler.mx.toFixed(3)}) / ${scaler.sx.toFixed(3)}`);
+      lines.push(`y': (y - ${scaler.my.toFixed(3)}) / ${scaler.sy.toFixed(3)}`);
+      lines.push(`lr_scale = ${learningState.lrScale.toFixed(3)}`);
+      document.getElementById('modelDetail').textContent = lines.join('\n');
+
+      gammaRange.disabled = kernelType.value !== 'rbf';
+      dimRange.disabled = kernelType.value !== 'rbf';
+    }
+
+    function frame(now) {
+      const dt = now - lastT;
+      lastT = now;
+
+      if (running) {
+        accMs += dt;
+        const stepMs = 1000 / Math.max(1, sliders().speed);
+        let guard = 0;
+        while (accMs >= stepMs && guard < 300) {
+          optimizeOneStep();
+          accMs -= stepMs;
+          guard += 1;
+        }
+      } else {
+        accMs = 0;
+      }
+
+      drawPlot();
+      drawLoss();
+      updateUI();
+      requestAnimationFrame(frame);
+    }
+
+    document.getElementById('btnPlay').addEventListener('click', () => {
+      running = true;
+    });
+
+    document.getElementById('btnPause').addEventListener('click', () => {
+      running = false;
+    });
+
+    document.getElementById('btnStep').addEventListener('click', () => {
+      running = false;
+      optimizeOneStep();
+    });
+
+    document.getElementById('btnReset').addEventListener('click', () => {
+      running = false;
+      initializeModel();
+    });
+
+    document.getElementById('btnNew').addEventListener('click', () => {
+      running = false;
+      regenerateData();
+    });
+
+    datasetType.addEventListener('change', () => {
+      running = false;
+      regenerateData();
+    });
+
+    kernelType.addEventListener('change', () => {
+      running = false;
+      rebuildKernelAndModel();
+    });
+
+    gammaRange.addEventListener('change', () => {
+      if (kernelType.value !== 'rbf') return;
+      running = false;
+      rebuildKernelAndModel();
+    });
+
+    dimRange.addEventListener('change', () => {
+      if (kernelType.value !== 'rbf') return;
+      running = false;
+      rebuildKernelAndModel();
+    });
+
+    countRange.addEventListener('change', () => {
+      running = false;
+      regenerateData();
+    });
+
+    sepRange.addEventListener('change', () => {
+      running = false;
+      regenerateData();
+    });
+
+    noiseRange.addEventListener('change', () => {
+      running = false;
+      regenerateData();
+    });
+
+    flipRange.addEventListener('change', () => {
+      running = false;
+      regenerateData();
+    });
+
+    cRange.addEventListener('input', () => {
+      evaluate(false);
+    });
+
+    lrRange.addEventListener('input', () => {
+      evaluate(false);
+    });
+
+    batchRange.addEventListener('input', () => {
+      evaluate(false);
+    });
+
+    decayRange.addEventListener('input', () => {
+      evaluate(false);
+    });
+
+    speedRange.addEventListener('input', () => {
+      evaluate(false);
+    });
+
+    for (const r of ranges) {
+      r.addEventListener('input', updateUI);
+    }
+
+    regenerateData();
+    requestAnimationFrame(frame);
+  })();
+  </script>
+</body>
+</html>

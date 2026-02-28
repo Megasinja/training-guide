@@ -72,7 +72,7 @@
 
     .grid {
       display:grid;
-      grid-template-columns:repeat(2, minmax(0, 1fr));
+      grid-template-columns:repeat(auto-fit, minmax(250px, 1fr));
       gap:14px;
       margin-top:24px;
     }
@@ -163,10 +163,60 @@
           <h2>最初の教材</h2>
           <p>単回帰分析（最小二乗法）のシミュレータで、残差とSSE最小化の感覚をつかみます。</p>
         </article>
+        <article class="card">
+          <h2>過学習の体験教材</h2>
+          <p>sin関数を多項式で近似し、次数・L1/L2正則化で過学習と一般化の違いを可視化します。</p>
+        </article>
+        <article class="card">
+          <h2>SVMでの分割体験</h2>
+          <p>2クラスのクラスタ状データをSVMで分割し、C・カーネル・ノイズによる境界の変化を学びます。</p>
+        </article>
+        <article class="card">
+          <h2>SVM 1ステップ解説</h2>
+          <p>ミニバッチ抽出・勾配計算・更新・評価を1ステップ単位で同期表示し、式の意味を追えます。</p>
+        </article>
+        <article class="card">
+          <h2>勾配降下法の可視化</h2>
+          <p>等高線上の探索軌跡で、SGD/Momentum/Adam の挙動と学習率の影響を直感的に比較します。</p>
+        </article>
+        <article class="card">
+          <h2>勾配降下法 1ステップ解説</h2>
+          <p>勾配計算・更新量計算・座標更新・損失比較を、シミュレーションと同期して1ステップ単位で学べます。</p>
+        </article>
+        <article class="card">
+          <h2>MNIST t-SNE 可視化</h2>
+          <p>MNIST 1000枚をt-SNEで2次元埋め込みし、点をホバーすると元の手書き数字画像を確認できます。</p>
+        </article>
+        <article class="card">
+          <h2>画像とRGBの数値可視化</h2>
+          <p>画像を拡大してピクセルとRGB値の対応を確認し、0〜255の数値が色を作る仕組みを体験できます。</p>
+        </article>
+        <article class="card">
+          <h2>NNファインチューニング研修資料</h2>
+          <p>手法比較・実務フロー・失敗対策・戦略レコメンドを1ページで学べる教材です。</p>
+        </article>
+        <article class="card">
+          <h2>決定木（二分木）可視化</h2>
+          <p>2次元データが決定木で段階的に二分される様子を、分割境界と木構造を同期して学べます。</p>
+        </article>
+        <article class="card">
+          <h2>クラスタリング教材ハブ</h2>
+          <p>K-means / DBSCAN / 階層 / GMM / Spectral / Mean Shift / OPTICS / BIRCH を横断比較できる入口ページです。</p>
+        </article>
       </div>
 
       <div class="cta">
         <a class="button" href="least-squares-simulator.html">最小二乗法シミュレータを開く</a>
+        <a class="button" href="polynomial-overfitting-simulator.html">過学習シミュレータを開く</a>
+        <a class="button" href="svm-separation-simulator.html">SVM分割シミュレータを開く</a>
+        <a class="button" href="svm-step-by-step-explainer.html">SVM 1ステップ解説を開く</a>
+        <a class="button" href="gradient-descent-visualizer.html">勾配降下法ビジュアライザを開く</a>
+        <a class="button" href="gradient-descent-step-by-step-explainer.html">勾配降下法 1ステップ解説を開く</a>
+        <a class="button" href="mnist-tsne-explorer.html">MNIST t-SNEビューを開く</a>
+        <a class="button" href="image-pixel-rgb-visualizer.html">画像とRGBの数値可視化を開く</a>
+        <a class="button" href="nn-finetuning-training.html">NNファインチューニング資料を開く</a>
+        <a class="button" href="decision-tree-binary-split-visualizer.html">決定木（二分木）可視化を開く</a>
+        <a class="button" href="clustering-hub.html">クラスタリング教材ハブを開く</a>
         <a class="sub-link" href="README.md">READMEを見る</a>
       </div>
     </section>

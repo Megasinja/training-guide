@@ -1,0 +1,920 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>過学習シミュレータ | sin を多項式で近似</title>
+  <style>
+    :root {
+      --bg:#081325;
+      --panel:#0f1f3e;
+      --text:#e7edff;
+      --muted:#a8b5de;
+      --line:#2a3f6f;
+      --train:#73a7ff;
+      --val:#ffd36d;
+      --true:#63d69f;
+      --pred:#ff7d7d;
+      --good:#67d798;
+      --warn:#ffca68;
+      --bad:#ff7f7f;
+      --ink:#091124;
+    }
+
+    * { box-sizing:border-box; }
+
+    body {
+      margin:0;
+      color:var(--text);
+      font-family:"Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif;
+      background:
+        radial-gradient(circle at 8% 12%, rgba(115,167,255,0.18), transparent 32%),
+        radial-gradient(circle at 88% 8%, rgba(99,214,159,0.16), transparent 26%),
+        linear-gradient(180deg, #070f1f, var(--bg));
+      min-height:100vh;
+    }
+
+    .top-nav {
+      max-width:1200px;
+      margin:14px auto 0;
+      padding:0 18px;
+    }
+
+    .top-link {
+      color:var(--muted);
+      text-decoration:none;
+      font-size:13px;
+    }
+
+    .top-link:hover {
+      color:var(--text);
+      text-decoration:underline;
+    }
+
+    .wrap {
+      max-width:1200px;
+      margin:0 auto;
+      padding:16px 18px 24px;
+      display:grid;
+      grid-template-columns:1.24fr 0.76fr;
+      gap:16px;
+    }
+
+    .card {
+      background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+      border:1px solid rgba(255,255,255,0.08);
+      border-radius:14px;
+      padding:14px;
+      box-shadow:0 16px 34px rgba(0,0,0,0.35);
+    }
+
+    h1 {
+      margin:0 0 8px;
+      font-size:19px;
+      line-height:1.35;
+    }
+
+    .sub {
+      margin:0 0 12px;
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.65;
+    }
+
+    .pill {
+      display:inline-block;
+      padding:2px 8px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,0.14);
+      background:rgba(255,255,255,0.05);
+      color:var(--muted);
+      font-size:12px;
+    }
+
+    canvas {
+      width:100%;
+      height:auto;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,0.09);
+      background:rgba(4,10,24,0.45);
+    }
+
+    .legend {
+      margin-top:9px;
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      color:var(--muted);
+      font-size:12px;
+    }
+
+    .dot {
+      display:inline-block;
+      width:10px;
+      height:10px;
+      border-radius:50%;
+      margin-right:6px;
+      vertical-align:middle;
+    }
+
+    .mini-title {
+      margin:12px 0 7px;
+      font-size:13px;
+      color:var(--muted);
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+    }
+
+    .row {
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+
+    .slider {
+      margin:10px 0;
+      display:grid;
+      grid-template-columns:130px 1fr 88px;
+      align-items:center;
+      gap:10px;
+      font-size:13px;
+    }
+
+    input[type="range"] {
+      width:100%;
+      accent-color:#75a8ff;
+    }
+
+    button {
+      cursor:pointer;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,0.16);
+      background:rgba(255,255,255,0.06);
+      color:var(--text);
+      padding:8px 10px;
+      font-size:13px;
+      transition:background .2s ease;
+    }
+
+    button:hover {
+      background:rgba(255,255,255,0.11);
+    }
+
+    button.primary {
+      border-color:rgba(115,167,255,0.6);
+      background:rgba(115,167,255,0.2);
+    }
+
+    button.primary:hover {
+      background:rgba(115,167,255,0.27);
+    }
+
+    .hr {
+      height:1px;
+      background:rgba(255,255,255,0.11);
+      margin:12px 0;
+    }
+
+    .kv {
+      display:grid;
+      grid-template-columns:1fr auto;
+      gap:8px 10px;
+      font-size:13px;
+    }
+
+    .kv div:nth-child(odd) {
+      color:var(--muted);
+    }
+
+    .status {
+      margin-top:8px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,0.09);
+      background:rgba(0,0,0,0.18);
+      padding:10px;
+      font-size:13px;
+      line-height:1.55;
+    }
+
+    .status.good {
+      border-color:rgba(103,215,152,0.55);
+      background:rgba(103,215,152,0.11);
+    }
+
+    .status.warn {
+      border-color:rgba(255,202,104,0.55);
+      background:rgba(255,202,104,0.11);
+    }
+
+    .status.bad {
+      border-color:rgba(255,127,127,0.58);
+      background:rgba(255,127,127,0.11);
+    }
+
+    .coef {
+      margin-top:8px;
+      font-size:12px;
+      color:#d7e1ff;
+      border:1px solid rgba(255,255,255,0.09);
+      border-radius:10px;
+      background:rgba(2,8,20,0.55);
+      padding:8px;
+      max-height:186px;
+      overflow:auto;
+      font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      white-space:pre;
+    }
+
+    .note {
+      margin:10px 0 0;
+      color:var(--muted);
+      font-size:12px;
+      line-height:1.6;
+    }
+
+    .formula {
+      margin-top:8px;
+      color:#dce5ff;
+      font-size:12px;
+      border-radius:8px;
+      border:1px solid rgba(255,255,255,0.08);
+      background:rgba(8,16,32,0.55);
+      padding:8px;
+      line-height:1.55;
+    }
+
+    @media (max-width: 990px) {
+      .wrap { grid-template-columns:1fr; }
+      .slider { grid-template-columns:110px 1fr 88px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="top-nav">
+    <a class="top-link" href="index.html">← 新卒AI研修トップへ戻る</a>
+  </div>
+
+  <div class="wrap">
+    <section class="card">
+      <h1>過学習シミュレータ: <span class="pill">sin(2πx)</span> を多項式で近似</h1>
+      <p class="sub">
+        訓練データ（ノイズあり）へ高次数多項式を当てると、訓練誤差だけが下がって検証誤差が悪化することがあります。
+        <span class="pill">次数 d</span> と <span class="pill">L1/L2 正則化</span> を動かし、
+        <span class="pill">Train MSE</span> と <span class="pill">Validation MSE</span> の差を観察してください。
+      </p>
+
+      <canvas id="mainPlot" width="860" height="510"></canvas>
+
+      <div class="legend">
+        <span><span class="dot" style="background:var(--train)"></span>訓練データ（ノイズあり）</span>
+        <span><span class="dot" style="background:var(--val)"></span>検証データ（ノイズなし）</span>
+        <span><span class="dot" style="background:var(--true)"></span>真の関数 sin(2πx)</span>
+        <span><span class="dot" style="background:var(--pred)"></span>学習中の多項式</span>
+      </div>
+
+      <div class="mini-title">
+        <span>誤差の推移（直近ステップ）</span>
+        <span class="pill" id="modePill">モード: 学習中</span>
+      </div>
+      <canvas id="lossPlot" width="860" height="190"></canvas>
+    </section>
+
+    <section class="card">
+      <div class="row" style="justify-content:space-between;">
+        <div style="font-size:14px; font-weight:700;">操作パネル</div>
+        <div class="pill" id="statePill">状態: 計算中</div>
+      </div>
+
+      <div class="row" style="margin-top:10px;">
+        <button class="primary" id="btnPlay">再生</button>
+        <button id="btnPause">停止</button>
+        <button id="btnStep">1ステップ</button>
+        <button id="btnReset">重みリセット</button>
+        <button id="btnNew">データ再生成</button>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="slider">
+        <div>多項式次数 d</div>
+        <input id="degRange" type="range" min="1" max="100" step="1" value="12" />
+        <div id="degVal">12</div>
+      </div>
+
+      <div class="slider">
+        <div>L1 正則化 λ1</div>
+        <input id="l1Range" type="range" min="0" max="0.200" step="0.001" value="0.000" />
+        <div id="l1Val">0.000</div>
+      </div>
+
+      <div class="slider">
+        <div>L2 正則化 λ2</div>
+        <input id="l2Range" type="range" min="0" max="0.200" step="0.001" value="0.004" />
+        <div id="l2Val">0.004</div>
+      </div>
+
+      <div class="slider">
+        <div>学習率 η</div>
+        <input id="lrRange" type="range" min="0.001" max="1.000" step="0.001" value="0.028" />
+        <div id="lrVal">0.028</div>
+      </div>
+
+      <div class="slider">
+        <div>更新/秒</div>
+        <input id="speedRange" type="range" min="1" max="1000" step="1" value="24" />
+        <div id="speedVal">24</div>
+      </div>
+
+      <div class="slider">
+        <div>訓練点数</div>
+        <input id="trainRange" type="range" min="6" max="200" step="1" value="14" />
+        <div id="trainVal">14</div>
+      </div>
+
+      <div class="slider">
+        <div>検証点数</div>
+        <input id="valRange" type="range" min="30" max="400" step="1" value="120" />
+        <div id="valVal">120</div>
+      </div>
+
+      <div class="slider">
+        <div>ノイズ強度 σ</div>
+        <input id="noiseRange" type="range" min="0.00" max="0.80" step="0.01" value="0.24" />
+        <div id="noiseVal">0.24</div>
+      </div>
+
+      <div class="formula">
+        目的関数: <code>TrainMSE + λ1 ||w||1 + λ2 ||w||2²</code><br>
+        更新: <code>w ← prox<sub>L1</sub>(w - η∇(TrainMSE + λ2||w||2²))</code>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="kv">
+        <div>学習ステップ</div><div id="stepVal">0</div>
+        <div>Train MSE</div><div id="trainMSE">-</div>
+        <div>Validation MSE</div><div id="valMSE">-</div>
+        <div>True MSE (sin基準)</div><div id="trueMSE">-</div>
+        <div>一般化ギャップ</div><div id="gapVal">-</div>
+        <div>目的関数</div><div id="objVal">-</div>
+        <div>||w||1</div><div id="l1Norm">-</div>
+        <div>||w||2</div><div id="l2Norm">-</div>
+        <div>|w|>0.01 の係数数</div><div id="activeVal">-</div>
+      </div>
+
+      <div id="statusBox" class="status">評価: 初期化中...</div>
+
+      <div class="hr"></div>
+
+      <div style="font-size:13px; color:var(--muted);">現在の係数</div>
+      <div id="coefBox" class="coef">-</div>
+
+      <p class="note">
+        学習のコツ: 次数を高くし、訓練点を減らし、正則化を0にすると過学習しやすくなります。
+        その後で <code>λ1</code> や <code>λ2</code> を上げると、曲線の暴れと一般化ギャップが抑えられます。
+      </p>
+    </section>
+  </div>
+
+  <script>
+  (() => {
+    function randn() {
+      let u = 0;
+      let v = 0;
+      while (u === 0) u = Math.random();
+      while (v === 0) v = Math.random();
+      return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+    }
+
+    function clamp(v, lo, hi) {
+      return Math.min(hi, Math.max(lo, v));
+    }
+
+    function softThreshold(v, th) {
+      if (v > th) return v - th;
+      if (v < -th) return v + th;
+      return 0;
+    }
+
+    function trueFn(x) {
+      return Math.sin(2 * Math.PI * x);
+    }
+
+    function predict(x, w) {
+      let p = 1;
+      let y = 0;
+      for (let i = 0; i < w.length; i += 1) {
+        y += w[i] * p;
+        p *= x;
+      }
+      return y;
+    }
+
+    function makeData(nTrain, nVal, noiseSigma) {
+      const train = [];
+      const val = [];
+
+      for (let i = 0; i < nTrain; i += 1) {
+        const x = -1 + 2 * Math.random();
+        const yTrue = trueFn(x);
+        const y = yTrue + noiseSigma * randn();
+        train.push({ x, y, yTrue });
+      }
+
+      for (let i = 0; i < nVal; i += 1) {
+        const x = -1 + 2 * Math.random();
+        const yTrue = trueFn(x);
+        val.push({ x, y: yTrue, yTrue });
+      }
+
+      train.sort((a, b) => a.x - b.x);
+      val.sort((a, b) => a.x - b.x);
+      return { train, val };
+    }
+
+    function evaluateMetrics(data, w, lambda1, lambda2) {
+      let trainSE = 0;
+      let valSE = 0;
+
+      for (const p of data.train) {
+        const e = predict(p.x, w) - p.y;
+        trainSE += e * e;
+      }
+
+      for (const p of data.val) {
+        const e = predict(p.x, w) - p.y;
+        valSE += e * e;
+      }
+
+      const denseN = 220;
+      let trueSE = 0;
+      for (let i = 0; i < denseN; i += 1) {
+        const x = -1 + (2 * i) / (denseN - 1);
+        const e = predict(x, w) - trueFn(x);
+        trueSE += e * e;
+      }
+
+      let l1Norm = 0;
+      let l2sq = 0;
+      let active = 0;
+      for (let i = 1; i < w.length; i += 1) {
+        const a = Math.abs(w[i]);
+        l1Norm += a;
+        l2sq += w[i] * w[i];
+        if (a > 0.01) active += 1;
+      }
+
+      const trainMSE = trainSE / Math.max(1, data.train.length);
+      const valMSE = valSE / Math.max(1, data.val.length);
+      const trueMSE = trueSE / denseN;
+      const objective = trainMSE + lambda1 * l1Norm + lambda2 * l2sq;
+
+      return {
+        trainMSE,
+        valMSE,
+        trueMSE,
+        objective,
+        l1Norm,
+        l2Norm: Math.sqrt(l2sq),
+        gap: valMSE - trainMSE,
+        active
+      };
+    }
+
+    const mainPlot = document.getElementById('mainPlot');
+    const mainCtx = mainPlot.getContext('2d');
+    const lossPlot = document.getElementById('lossPlot');
+    const lossCtx = lossPlot.getContext('2d');
+
+    const degRange = document.getElementById('degRange');
+    const l1Range = document.getElementById('l1Range');
+    const l2Range = document.getElementById('l2Range');
+    const lrRange = document.getElementById('lrRange');
+    const speedRange = document.getElementById('speedRange');
+    const trainRange = document.getElementById('trainRange');
+    const valRange = document.getElementById('valRange');
+    const noiseRange = document.getElementById('noiseRange');
+
+    const maxHistory = 260;
+
+    let data = makeData(parseInt(trainRange.value, 10), parseInt(valRange.value, 10), parseFloat(noiseRange.value));
+    let weights = new Array(parseInt(degRange.value, 10) + 1).fill(0);
+    let running = true;
+    let stepCount = 0;
+    let lastTime = performance.now();
+    let accMs = 0;
+    let history = [];
+    let latest = evaluateMetrics(data, weights, parseFloat(l1Range.value), parseFloat(l2Range.value));
+
+    function sliderNums() {
+      return {
+        degree: parseInt(degRange.value, 10),
+        l1: parseFloat(l1Range.value),
+        l2: parseFloat(l2Range.value),
+        lr: parseFloat(lrRange.value),
+        speed: parseInt(speedRange.value, 10),
+        nTrain: parseInt(trainRange.value, 10),
+        nVal: parseInt(valRange.value, 10),
+        noise: parseFloat(noiseRange.value)
+      };
+    }
+
+    function pushHistory(m) {
+      history.push({
+        train: m.trainMSE,
+        val: m.valMSE,
+        obj: m.objective,
+        trueMSE: m.trueMSE
+      });
+      if (history.length > maxHistory) {
+        history = history.slice(history.length - maxHistory);
+      }
+    }
+
+    function recalc(push) {
+      const s = sliderNums();
+      latest = evaluateMetrics(data, weights, s.l1, s.l2);
+      if (push) pushHistory(latest);
+    }
+
+    function resetWeights() {
+      const degree = sliderNums().degree;
+      weights = new Array(degree + 1).fill(0);
+      stepCount = 0;
+      history = [];
+      recalc(true);
+    }
+
+    function regenerateData() {
+      const s = sliderNums();
+      data = makeData(s.nTrain, s.nVal, s.noise);
+      resetWeights();
+    }
+
+    function resizeWeights(newDegree) {
+      const next = new Array(newDegree + 1).fill(0);
+      for (let i = 0; i < Math.min(next.length, weights.length); i += 1) {
+        next[i] = weights[i];
+      }
+      weights = next;
+      recalc(true);
+    }
+
+    function optimizeOneStep() {
+      const s = sliderNums();
+      const d = weights.length;
+      const grad = new Array(d).fill(0);
+      const invN = 1 / Math.max(1, data.train.length);
+
+      for (const p of data.train) {
+        const basis = new Array(d);
+        let pow = 1;
+        for (let j = 0; j < d; j += 1) {
+          basis[j] = pow;
+          pow *= p.x;
+        }
+
+        let yhat = 0;
+        for (let j = 0; j < d; j += 1) {
+          yhat += weights[j] * basis[j];
+        }
+
+        const err = yhat - p.y;
+        const c = 2 * invN * err;
+        for (let j = 0; j < d; j += 1) {
+          grad[j] += c * basis[j];
+        }
+      }
+
+      for (let j = 1; j < d; j += 1) {
+        grad[j] += 2 * s.l2 * weights[j];
+      }
+
+      const next = new Array(d).fill(0);
+      for (let j = 0; j < d; j += 1) {
+        const z = weights[j] - s.lr * grad[j];
+        next[j] = j === 0 ? z : softThreshold(z, s.lr * s.l1);
+        next[j] = clamp(next[j], -80, 80);
+      }
+
+      if (!next.every(Number.isFinite)) {
+        resetWeights();
+        return;
+      }
+
+      weights = next;
+      stepCount += 1;
+      recalc(true);
+    }
+
+    function axisProjector(width, height, yLimit) {
+      const pad = 56;
+      const xMin = -1.05;
+      const xMax = 1.05;
+      const yMin = -yLimit;
+      const yMax = yLimit;
+      const x2px = x => pad + ((x - xMin) * (width - 2 * pad)) / (xMax - xMin);
+      const y2py = y => height - pad - ((y - yMin) * (height - 2 * pad)) / (yMax - yMin);
+      return { pad, xMin, xMax, yMin, yMax, x2px, y2py };
+    }
+
+    function drawMain() {
+      const ctx = mainCtx;
+      const w = mainPlot.width;
+      const h = mainPlot.height;
+
+      let yMaxAbs = 1.25;
+      for (const p of data.train) yMaxAbs = Math.max(yMaxAbs, Math.abs(p.y));
+      for (let i = 0; i <= 260; i += 1) {
+        const x = -1 + (2 * i) / 260;
+        yMaxAbs = Math.max(yMaxAbs, Math.abs(predict(x, weights)), Math.abs(trueFn(x)));
+      }
+      yMaxAbs = clamp(yMaxAbs * 1.15, 1.25, 3.9);
+
+      const a = axisProjector(w, h, yMaxAbs);
+
+      ctx.clearRect(0, 0, w, h);
+
+      ctx.fillStyle = 'rgba(7,14,30,0.55)';
+      ctx.fillRect(a.pad, a.pad, w - 2 * a.pad, h - 2 * a.pad);
+
+      ctx.strokeStyle = 'rgba(255,255,255,0.09)';
+      ctx.lineWidth = 1;
+      for (let i = 0; i <= 4; i += 1) {
+        const x = -1 + 0.5 * i;
+        ctx.beginPath();
+        ctx.moveTo(a.x2px(x), a.y2py(a.yMin));
+        ctx.lineTo(a.x2px(x), a.y2py(a.yMax));
+        ctx.stroke();
+      }
+      for (let i = -4; i <= 4; i += 1) {
+        const y = (i / 4) * yMaxAbs;
+        ctx.beginPath();
+        ctx.moveTo(a.x2px(a.xMin), a.y2py(y));
+        ctx.lineTo(a.x2px(a.xMax), a.y2py(y));
+        ctx.stroke();
+      }
+
+      ctx.strokeStyle = 'rgba(255,255,255,0.45)';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(a.x2px(a.xMin), a.y2py(0));
+      ctx.lineTo(a.x2px(a.xMax), a.y2py(0));
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(a.x2px(0), a.y2py(a.yMin));
+      ctx.lineTo(a.x2px(0), a.y2py(a.yMax));
+      ctx.stroke();
+
+      ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--true').trim();
+      ctx.lineWidth = 2.6;
+      ctx.beginPath();
+      for (let i = 0; i <= 340; i += 1) {
+        const x = -1 + (2 * i) / 340;
+        const y = trueFn(x);
+        if (i === 0) ctx.moveTo(a.x2px(x), a.y2py(y));
+        else ctx.lineTo(a.x2px(x), a.y2py(y));
+      }
+      ctx.stroke();
+
+      ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--pred').trim();
+      ctx.lineWidth = 2.4;
+      ctx.beginPath();
+      for (let i = 0; i <= 340; i += 1) {
+        const x = -1 + (2 * i) / 340;
+        const y = clamp(predict(x, weights), -9, 9);
+        if (i === 0) ctx.moveTo(a.x2px(x), a.y2py(clamp(y, -yMaxAbs, yMaxAbs)));
+        else ctx.lineTo(a.x2px(x), a.y2py(clamp(y, -yMaxAbs, yMaxAbs)));
+      }
+      ctx.stroke();
+
+      for (const p of data.val) {
+        ctx.strokeStyle = 'rgba(255,211,109,0.85)';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.arc(a.x2px(p.x), a.y2py(p.y), 3.1, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      for (const p of data.train) {
+        ctx.fillStyle = 'rgba(115,167,255,0.95)';
+        ctx.beginPath();
+        ctx.arc(a.x2px(p.x), a.y2py(p.y), 3.8, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.fillStyle = 'rgba(230,236,255,0.86)';
+      ctx.font = '12px "Hiragino Sans", sans-serif';
+      ctx.fillText('x ∈ [-1, 1]', a.x2px(-1), h - 22);
+      ctx.fillText(`y range: ±${yMaxAbs.toFixed(2)}`, a.x2px(0.35), h - 22);
+    }
+
+    function drawLoss() {
+      const ctx = lossCtx;
+      const w = lossPlot.width;
+      const h = lossPlot.height;
+      const pad = 42;
+
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = 'rgba(7,14,30,0.55)';
+      ctx.fillRect(pad, 16, w - 2 * pad, h - 30);
+
+      if (history.length < 2) {
+        ctx.fillStyle = 'rgba(225,233,255,0.82)';
+        ctx.font = '12px "Hiragino Sans", sans-serif';
+        ctx.fillText('学習を進めると、Train/Validation MSEの推移が表示されます。', pad + 8, 38);
+        return;
+      }
+
+      const yValues = [];
+      for (const item of history) {
+        yValues.push(Math.log10(item.train + 1e-8));
+        yValues.push(Math.log10(item.val + 1e-8));
+        yValues.push(Math.log10(item.trueMSE + 1e-8));
+      }
+      const yMin = Math.min(...yValues);
+      const yMax = Math.max(...yValues);
+      const ySpan = Math.max(0.4, yMax - yMin);
+
+      const x2px = i => pad + (i * (w - 2 * pad)) / (history.length - 1);
+      const y2py = v => (h - 14) - ((v - yMin) * (h - 34)) / ySpan;
+
+      ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+      ctx.lineWidth = 1;
+      for (let i = 0; i <= 4; i += 1) {
+        const yy = yMin + (i * ySpan) / 4;
+        ctx.beginPath();
+        ctx.moveTo(pad, y2py(yy));
+        ctx.lineTo(w - pad, y2py(yy));
+        ctx.stroke();
+      }
+
+      function drawLine(getValue, color) {
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        for (let i = 0; i < history.length; i += 1) {
+          const yv = Math.log10(getValue(history[i]) + 1e-8);
+          if (i === 0) ctx.moveTo(x2px(i), y2py(yv));
+          else ctx.lineTo(x2px(i), y2py(yv));
+        }
+        ctx.stroke();
+      }
+
+      drawLine(hs => hs.train, 'rgba(115,167,255,0.95)');
+      drawLine(hs => hs.val, 'rgba(255,211,109,0.95)');
+      drawLine(hs => hs.trueMSE, 'rgba(99,214,159,0.95)');
+
+      ctx.fillStyle = 'rgba(230,237,255,0.88)';
+      ctx.font = '11px "Hiragino Sans", sans-serif';
+      ctx.fillText('縦軸: log10(MSE)', pad + 8, 30);
+      ctx.fillText(`最新: Train=${latest.trainMSE.toFixed(4)} / Val=${latest.valMSE.toFixed(4)} / True=${latest.trueMSE.toFixed(4)}`, pad + 8, h - 8);
+    }
+
+    function statusMessage(m) {
+      if (m.gap > 0.12 && m.trainMSE < 0.05) {
+        return {
+          level: 'bad',
+          text: '過学習が強い状態です。訓練誤差は低い一方で検証誤差が高く、ノイズへの当て込みが起きています。'
+        };
+      }
+      if (m.trainMSE > 0.18 && m.valMSE > 0.18) {
+        return {
+          level: 'warn',
+          text: 'まだ十分に学習できていません。次数を上げるか、学習率/更新回数を調整してみてください。'
+        };
+      }
+      return {
+        level: 'good',
+        text: '訓練誤差と検証誤差のバランスは比較的良好です。正則化と次数で最適点を探せています。'
+      };
+    }
+
+    function updateUI() {
+      const s = sliderNums();
+
+      document.getElementById('degVal').textContent = `${s.degree}`;
+      document.getElementById('l1Val').textContent = s.l1.toFixed(3);
+      document.getElementById('l2Val').textContent = s.l2.toFixed(3);
+      document.getElementById('lrVal').textContent = s.lr.toFixed(3);
+      document.getElementById('speedVal').textContent = `${s.speed}`;
+      document.getElementById('trainVal').textContent = `${s.nTrain}`;
+      document.getElementById('valVal').textContent = `${s.nVal}`;
+      document.getElementById('noiseVal').textContent = s.noise.toFixed(2);
+
+      document.getElementById('modePill').textContent = running ? 'モード: 学習中' : 'モード: 停止中';
+      document.getElementById('statePill').textContent = running ? '状態: 計算中' : '状態: 一時停止';
+
+      document.getElementById('stepVal').textContent = `${stepCount}`;
+      document.getElementById('trainMSE').textContent = latest.trainMSE.toFixed(5);
+      document.getElementById('valMSE').textContent = latest.valMSE.toFixed(5);
+      document.getElementById('trueMSE').textContent = latest.trueMSE.toFixed(5);
+      document.getElementById('gapVal').textContent = latest.gap.toFixed(5);
+      document.getElementById('objVal').textContent = latest.objective.toFixed(5);
+      document.getElementById('l1Norm').textContent = latest.l1Norm.toFixed(4);
+      document.getElementById('l2Norm').textContent = latest.l2Norm.toFixed(4);
+      document.getElementById('activeVal').textContent = `${latest.active}`;
+
+      const msg = statusMessage(latest);
+      const statusBox = document.getElementById('statusBox');
+      statusBox.className = `status ${msg.level}`;
+      statusBox.textContent = `評価: ${msg.text}`;
+
+      const coefLines = [];
+      for (let i = 0; i < weights.length; i += 1) {
+        const w = weights[i];
+        coefLines.push(`w${String(i).padStart(2, '0')} = ${w >= 0 ? ' ' : ''}${w.toFixed(5)}`);
+      }
+      document.getElementById('coefBox').textContent = coefLines.join('\n');
+    }
+
+    function frame(now) {
+      const dt = now - lastTime;
+      lastTime = now;
+
+      if (running) {
+        accMs += dt;
+        const stepMs = 1000 / Math.max(1, sliderNums().speed);
+        let guard = 0;
+        while (accMs >= stepMs && guard < 260) {
+          optimizeOneStep();
+          accMs -= stepMs;
+          guard += 1;
+        }
+      } else {
+        accMs = 0;
+      }
+
+      drawMain();
+      drawLoss();
+      updateUI();
+      requestAnimationFrame(frame);
+    }
+
+    document.getElementById('btnPlay').addEventListener('click', () => {
+      running = true;
+    });
+
+    document.getElementById('btnPause').addEventListener('click', () => {
+      running = false;
+    });
+
+    document.getElementById('btnStep').addEventListener('click', () => {
+      running = false;
+      optimizeOneStep();
+    });
+
+    document.getElementById('btnReset').addEventListener('click', () => {
+      running = false;
+      resetWeights();
+    });
+
+    document.getElementById('btnNew').addEventListener('click', () => {
+      running = false;
+      regenerateData();
+    });
+
+    degRange.addEventListener('input', () => {
+      resizeWeights(parseInt(degRange.value, 10));
+    });
+
+    l1Range.addEventListener('input', () => {
+      recalc(false);
+    });
+
+    l2Range.addEventListener('input', () => {
+      recalc(false);
+    });
+
+    lrRange.addEventListener('input', () => {
+      recalc(false);
+    });
+
+    speedRange.addEventListener('input', () => {
+      recalc(false);
+    });
+
+    trainRange.addEventListener('input', () => {
+      document.getElementById('trainVal').textContent = `${parseInt(trainRange.value, 10)}`;
+    });
+
+    valRange.addEventListener('input', () => {
+      document.getElementById('valVal').textContent = `${parseInt(valRange.value, 10)}`;
+    });
+
+    noiseRange.addEventListener('input', () => {
+      document.getElementById('noiseVal').textContent = parseFloat(noiseRange.value).toFixed(2);
+    });
+
+    trainRange.addEventListener('change', regenerateData);
+    valRange.addEventListener('change', regenerateData);
+    noiseRange.addEventListener('change', regenerateData);
+
+    recalc(true);
+    requestAnimationFrame(frame);
+  })();
+  </script>
+</body>
+</html>

@@ -33,4 +33,21 @@ AI新人研修用
 
 - `index.html` - 新卒AI研修のスタートページ
 - `least-squares-simulator.html` - 単回帰分析（最小二乗法）シミュレータ
+- `polynomial-overfitting-simulator.html` - sin関数近似で過学習を学ぶシミュレータ（次数・L1/L2正則化対応）
+- `svm-separation-simulator.html` - クラスタ状2クラスデータをSVMで分割して学ぶシミュレータ
+- `svm-step-by-step-explainer.html` - SVMの1更新ステップを式と意図つきで同期解説するページ
+- `gradient-descent-visualizer.html` - 勾配降下法の探索軌跡・損失推移を可視化するシミュレータ
+- `gradient-descent-step-by-step-explainer.html` - 勾配降下法の1更新ステップを計算意図つきで同期解説するページ
+- `mnist-tsne-explorer.html` - MNIST 1000件をt-SNEで2次元可視化し、ホバーで元画像を表示するページ
+- `nn-finetuning-training.html` - NNファインチューニングの実務手順・比較・失敗対策を学ぶ研修資料
+- `decision-tree-binary-split-visualizer.html` - 決定木（二分木）で2次元データを段階分割する可視化ページ
+- `clustering-hub.html` - クラスタリング教材の入口ページ（K-means / DBSCAN / 階層クラスタリング）
+- `clustering-kmeans-simulator.html` - K-means の目的関数・パラメータ説明つきシミュレータ
+- `clustering-dbscan-simulator.html` - DBSCAN の定義式・探索手順をステップ実行できるシミュレータ
+- `clustering-hierarchical-simulator.html` - 階層クラスタリングの linkage 比較とマージ過程を可視化するシミュレータ
+- `clustering-gmm-em-simulator.html` - GMMをEM法で学習し、尤度・責務・楕円成分を可視化するシミュレータ
+- `clustering-spectral-simulator.html` - Spectral Clusteringのグラフ埋め込みと割当更新を可視化するシミュレータ
+- `clustering-mean-shift-simulator.html` - Mean Shiftのモード探索と統合過程を可視化するシミュレータ
+- `clustering-optics-simulator.html` - OPTICSの処理順・reachabilityプロット・閾値抽出を可視化するシミュレータ
+- `clustering-birch-simulator.html` - BIRCHのCF要約更新と圧縮挙動を可視化するシミュレータ
 - `README.md` - このファイル

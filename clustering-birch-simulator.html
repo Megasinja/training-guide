@@ -1,0 +1,1086 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>BIRCH クラスタリングシミュレータ</title>
+  <style>
+    :root {
+      --bg:#081326;
+      --panel:#0f1f3e;
+      --text:#e9efff;
+      --muted:#aab8de;
+      --line:#2b406e;
+      --warn:#ffd06b;
+      --good:#67d79a;
+      --bad:#ff8787;
+      --accent:#73a7ff;
+    }
+
+    * { box-sizing:border-box; }
+
+    body {
+      margin:0;
+      min-height:100vh;
+      color:var(--text);
+      font-family:"Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif;
+      background:
+        radial-gradient(circle at 12% 14%, rgba(115,167,255,0.17), transparent 34%),
+        radial-gradient(circle at 88% 10%, rgba(111,223,167,0.16), transparent 28%),
+        linear-gradient(180deg, #060f1d, var(--bg));
+    }
+
+    .top-nav {
+      max-width:1220px;
+      margin:14px auto 0;
+      padding:0 18px;
+      display:flex;
+      gap:14px;
+      flex-wrap:wrap;
+    }
+
+    .top-link {
+      color:var(--muted);
+      text-decoration:none;
+      font-size:13px;
+    }
+
+    .top-link:hover {
+      color:var(--text);
+      text-decoration:underline;
+    }
+
+    .wrap {
+      max-width:1220px;
+      margin:0 auto;
+      padding:16px 18px 24px;
+      display:grid;
+      grid-template-columns:1.22fr 0.78fr;
+      gap:16px;
+    }
+
+    .card {
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,0.09);
+      background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+      padding:14px;
+      box-shadow:0 15px 32px rgba(0,0,0,0.35);
+    }
+
+    h1 {
+      margin:0 0 8px;
+      font-size:19px;
+      line-height:1.35;
+    }
+
+    .sub {
+      margin:0;
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.65;
+    }
+
+    .pill {
+      display:inline-block;
+      padding:2px 8px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,0.13);
+      background:rgba(255,255,255,0.05);
+      color:var(--muted);
+      font-size:12px;
+    }
+
+    .formula {
+      margin-top:10px;
+      border-radius:9px;
+      border:1px solid rgba(255,255,255,0.1);
+      background:rgba(8,16,32,0.52);
+      padding:9px;
+      color:#dce5ff;
+      font-size:12px;
+      line-height:1.6;
+      font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      white-space:pre-wrap;
+    }
+
+    .desc {
+      margin-top:10px;
+      border-radius:9px;
+      border:1px solid rgba(255,255,255,0.1);
+      background:rgba(255,255,255,0.03);
+      padding:9px;
+      font-size:12px;
+      line-height:1.6;
+      color:#d4deff;
+    }
+
+    canvas {
+      width:100%;
+      height:auto;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,0.09);
+      background:rgba(4,10,24,0.45);
+    }
+
+    .legend {
+      margin-top:9px;
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      font-size:12px;
+      color:var(--muted);
+    }
+
+    .dot {
+      display:inline-block;
+      width:10px;
+      height:10px;
+      border-radius:50%;
+      margin-right:6px;
+      vertical-align:middle;
+    }
+
+    .mini-title {
+      margin:12px 0 7px;
+      font-size:13px;
+      color:var(--muted);
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+    }
+
+    .row {
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      align-items:center;
+    }
+
+    button {
+      cursor:pointer;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,0.16);
+      background:rgba(255,255,255,0.06);
+      color:var(--text);
+      font-size:13px;
+      padding:8px 10px;
+      transition:background .2s ease;
+    }
+
+    button:hover { background:rgba(255,255,255,0.11); }
+
+    button.primary {
+      border-color:rgba(115,167,255,0.58);
+      background:rgba(115,167,255,0.21);
+    }
+
+    button.primary:hover { background:rgba(115,167,255,0.28); }
+
+    .selectrow {
+      display:grid;
+      grid-template-columns:120px 1fr;
+      gap:10px;
+      margin:8px 0;
+      align-items:center;
+      font-size:13px;
+    }
+
+    select {
+      width:100%;
+      border-radius:9px;
+      border:1px solid rgba(255,255,255,0.15);
+      background:rgba(255,255,255,0.06);
+      color:var(--text);
+      padding:7px 8px;
+      font-size:13px;
+    }
+
+    .slider {
+      margin:10px 0;
+      display:grid;
+      grid-template-columns:140px 1fr 84px;
+      gap:10px;
+      align-items:center;
+      font-size:13px;
+    }
+
+    input[type="range"] { width:100%; accent-color:#75a8ff; }
+
+    .checkrow {
+      margin:8px 0;
+      color:var(--muted);
+      font-size:13px;
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+
+    .hr {
+      height:1px;
+      margin:12px 0;
+      background:rgba(255,255,255,0.11);
+    }
+
+    .kv {
+      display:grid;
+      grid-template-columns:1fr auto;
+      gap:8px 10px;
+      font-size:13px;
+    }
+
+    .kv div:nth-child(odd) { color:var(--muted); }
+
+    .status {
+      margin-top:8px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,0.1);
+      background:rgba(0,0,0,0.2);
+      padding:10px;
+      font-size:13px;
+      line-height:1.55;
+    }
+
+    .status.good {
+      border-color:rgba(103,215,154,0.52);
+      background:rgba(103,215,154,0.12);
+    }
+
+    .status.warn {
+      border-color:rgba(255,208,107,0.52);
+      background:rgba(255,208,107,0.12);
+    }
+
+    .detail {
+      margin-top:8px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,0.09);
+      background:rgba(2,8,20,0.55);
+      padding:8px;
+      color:#d8e2ff;
+      font-size:12px;
+      font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      white-space:pre-wrap;
+      max-height:190px;
+      overflow:auto;
+    }
+
+    @media (max-width: 990px) {
+      .wrap { grid-template-columns:1fr; }
+      .slider { grid-template-columns:112px 1fr 84px; }
+      .selectrow { grid-template-columns:100px 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="top-nav">
+    <a class="top-link" href="clustering-hub.html">← クラスタリングハブへ戻る</a>
+    <a class="top-link" href="index.html">研修トップへ戻る</a>
+  </div>
+
+  <div class="wrap">
+    <section class="card">
+      <h1>BIRCH クラスタリングシミュレータ（CF要約）</h1>
+      <p class="sub">
+        BIRCH はデータを1件ずつ挿入し、Clustering Feature (CF) で要約しながら
+        マイクロクラスタを構築する大規模向け手法です。
+      </p>
+
+      <div class="formula">CF entry
+CF = (N, LS, SS)
+N: 点数, LS: 座標和, SS: 二乗和
+
+centroid
+μ = LS / N
+
+radius
+R = sqrt( SS/N - ||LS/N||² )
+
+挿入
+最近CFへ追加後 R ≤ T なら吸収、超えるなら新規CF
+（本デモは overflow 時に近いCF同士を圧縮マージ）</div>
+
+      <div class="desc">
+        <b>パラメータ説明</b><br>
+        `しきい値 T` はCF半径上限、`分岐係数 B` は保持するCF数の上限です。
+        Tを小さくすると細かい要約、Bを小さくすると圧縮マージが増えます。
+      </div>
+
+      <canvas id="plot" width="860" height="500"></canvas>
+      <div class="legend" id="legend"></div>
+
+      <div class="mini-title">
+        <span>CFエントリのサイズ/半径</span>
+        <span class="pill" id="modePill">モード: 挿入中</span>
+      </div>
+      <canvas id="cfPlot" width="860" height="210"></canvas>
+    </section>
+
+    <section class="card">
+      <div class="row" style="justify-content:space-between;">
+        <div style="font-size:14px; font-weight:700;">操作パネル</div>
+        <div class="pill" id="statePill">状態: 計算中</div>
+      </div>
+
+      <div class="row" style="margin-top:10px;">
+        <button class="primary" id="btnPlay">再生</button>
+        <button id="btnPause">停止</button>
+        <button id="btnStep">1ステップ</button>
+        <button id="btnReset">挿入リセット</button>
+        <button id="btnNew">データ再生成</button>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="selectrow">
+        <div>データ形状</div>
+        <select id="datasetType">
+          <option value="blobs">ガウス塊</option>
+          <option value="rings">同心円</option>
+          <option value="moons">2つの月</option>
+        </select>
+      </div>
+
+      <div class="slider">
+        <div>しきい値 T</div>
+        <input id="thRange" type="range" min="0.03" max="1.30" step="0.01" value="0.22" />
+        <div id="thVal">0.22</div>
+      </div>
+
+      <div class="slider">
+        <div>分岐係数 B</div>
+        <input id="bRange" type="range" min="2" max="30" step="1" value="10" />
+        <div id="bVal">10</div>
+      </div>
+
+      <div class="slider">
+        <div>更新/秒</div>
+        <input id="speedRange" type="range" min="1" max="50" step="1" value="12" />
+        <div id="speedVal">12</div>
+      </div>
+
+      <div class="slider">
+        <div>点の数</div>
+        <input id="countRange" type="range" min="20" max="260" step="2" value="140" />
+        <div id="countVal">140</div>
+      </div>
+
+      <div class="slider">
+        <div>生成クラスタ数</div>
+        <input id="trueKRange" type="range" min="2" max="8" step="1" value="3" />
+        <div id="trueKVal">3</div>
+      </div>
+
+      <div class="slider">
+        <div>クラス間隔</div>
+        <input id="sepRange" type="range" min="0.6" max="3.8" step="0.1" value="2.2" />
+        <div id="sepVal">2.2</div>
+      </div>
+
+      <div class="slider">
+        <div>ノイズ σ</div>
+        <input id="noiseRange" type="range" min="0.03" max="1.20" step="0.01" value="0.30" />
+        <div id="noiseVal">0.30</div>
+      </div>
+
+      <label class="checkrow"><input id="showRings" type="checkbox" checked /> CF半径リングを表示</label>
+
+      <div class="hr"></div>
+
+      <div class="kv">
+        <div>挿入ステップ</div><div id="stepVal">0</div>
+        <div>処理済み / 全点</div><div id="procVal">0 / 0</div>
+        <div>CFエントリ数</div><div id="cfCntVal">0</div>
+        <div>平均CF半径</div><div id="avgRadVal">-</div>
+        <div>最大CF半径</div><div id="maxRadVal">-</div>
+        <div>圧縮マージ回数</div><div id="mergeCntVal">0</div>
+      </div>
+
+      <div id="statusBox" class="status">評価: 初期化中...</div>
+      <div class="detail" id="detailBox">-</div>
+    </section>
+  </div>
+
+  <script>
+  (() => {
+    function randn() {
+      let u = 0;
+      let v = 0;
+      while (u === 0) u = Math.random();
+      while (v === 0) v = Math.random();
+      return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+    }
+
+    function clamp(v, lo, hi) {
+      return Math.min(hi, Math.max(lo, v));
+    }
+
+    function sqDist(a, b) {
+      const dx = a.x - b.x;
+      const dy = a.y - b.y;
+      return dx * dx + dy * dy;
+    }
+
+    function shuffle(arr) {
+      for (let i = arr.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(Math.random() * (i + 1));
+        const t = arr[i];
+        arr[i] = arr[j];
+        arr[j] = t;
+      }
+      return arr;
+    }
+
+    const palette = [
+      [115, 167, 255],
+      [255, 125, 125],
+      [126, 226, 168],
+      [255, 211, 109],
+      [213, 155, 255],
+      [135, 220, 255],
+      [255, 168, 107],
+      [145, 161, 255]
+    ];
+
+    function colorOf(id, alpha) {
+      const c = palette[id % palette.length];
+      return `rgba(${c[0]},${c[1]},${c[2]},${alpha})`;
+    }
+
+    function generateData(type, count, sep, noise, trueK) {
+      const points = [];
+      for (let i = 0; i < count; i += 1) {
+        const group = i % trueK;
+        let x;
+        let y;
+
+        if (type === 'blobs') {
+          const r = sep * 1.15 + 0.5;
+          const a = (Math.PI * 2 * group) / trueK;
+          x = r * Math.cos(a) + randn() * noise;
+          y = 0.8 * r * Math.sin(a) + randn() * noise;
+        } else if (type === 'rings') {
+          const minR = 0.7;
+          const ringGap = 0.55 + sep * 0.24;
+          const radius = minR + group * ringGap;
+          const t = Math.random() * Math.PI * 2;
+          x = radius * Math.cos(t) + randn() * noise;
+          y = radius * Math.sin(t) + randn() * noise;
+        } else {
+          const label = i < count / 2 ? 0 : 1;
+          const t = Math.random() * Math.PI;
+          if (label === 0) {
+            x = Math.cos(t);
+            y = Math.sin(t);
+          } else {
+            x = 1 - Math.cos(t);
+            y = -Math.sin(t) - 0.5;
+          }
+          const sc = 2.0 + sep * 0.34;
+          x = (x - 0.55) * sc + (label === 0 ? -sep * 0.2 : sep * 0.2);
+          y = (y - 0.08) * sc;
+          x += randn() * noise;
+          y += randn() * noise;
+        }
+
+        points.push({ x: clamp(x, -4, 4), y: clamp(y, -4, 4), group, processed: false, cluster: -1 });
+      }
+      return points;
+    }
+
+    const plot = document.getElementById('plot');
+    const pctx = plot.getContext('2d');
+    const cfPlot = document.getElementById('cfPlot');
+    const cctx = cfPlot.getContext('2d');
+
+    const datasetType = document.getElementById('datasetType');
+    const thRange = document.getElementById('thRange');
+    const bRange = document.getElementById('bRange');
+    const speedRange = document.getElementById('speedRange');
+    const countRange = document.getElementById('countRange');
+    const trueKRange = document.getElementById('trueKRange');
+    const sepRange = document.getElementById('sepRange');
+    const noiseRange = document.getElementById('noiseRange');
+    const showRings = document.getElementById('showRings');
+
+    let points = [];
+    let order = [];
+    let cursor = 0;
+    let entries = [];
+
+    let running = true;
+    let stepCount = 0;
+    let mergeCount = 0;
+    let sizeHistory = [];
+
+    let currentPointIdx = -1;
+    let lastAction = null;
+
+    let metrics = {
+      processed: 0,
+      cfCount: 0,
+      avgRad: 0,
+      maxRad: 0,
+      mergeCount: 0
+    };
+
+    let lastT = performance.now();
+    let accMs = 0;
+
+    function sliders() {
+      return {
+        type: datasetType.value,
+        T: parseFloat(thRange.value),
+        B: parseInt(bRange.value, 10),
+        speed: parseInt(speedRange.value, 10),
+        count: parseInt(countRange.value, 10),
+        trueK: parseInt(trueKRange.value, 10),
+        sep: parseFloat(sepRange.value),
+        noise: parseFloat(noiseRange.value)
+      };
+    }
+
+    function entryCentroid(e) {
+      return { x: e.lsX / e.n, y: e.lsY / e.n };
+    }
+
+    function entryRadius(e) {
+      const cx = e.lsX / e.n;
+      const cy = e.lsY / e.n;
+      const meanSq = e.ss / e.n;
+      const c2 = cx * cx + cy * cy;
+      return Math.sqrt(Math.max(0, meanSq - c2));
+    }
+
+    function simulateRadiusAfterAbsorb(e, p) {
+      const n = e.n + 1;
+      const lsX = e.lsX + p.x;
+      const lsY = e.lsY + p.y;
+      const ss = e.ss + p.x * p.x + p.y * p.y;
+      const cx = lsX / n;
+      const cy = lsY / n;
+      const meanSq = ss / n;
+      return Math.sqrt(Math.max(0, meanSq - (cx * cx + cy * cy)));
+    }
+
+    function createEntryFromPoint(p, idx) {
+      return {
+        n: 1,
+        lsX: p.x,
+        lsY: p.y,
+        ss: p.x * p.x + p.y * p.y,
+        members: [idx]
+      };
+    }
+
+    function absorbPoint(e, p, idx) {
+      e.n += 1;
+      e.lsX += p.x;
+      e.lsY += p.y;
+      e.ss += p.x * p.x + p.y * p.y;
+      e.members.push(idx);
+    }
+
+    function nearestEntryIndex(p) {
+      let best = 0;
+      let bestD = Infinity;
+      for (let i = 0; i < entries.length; i += 1) {
+        const c = entryCentroid(entries[i]);
+        const d = sqDist(p, c);
+        if (d < bestD) {
+          bestD = d;
+          best = i;
+        }
+      }
+      return best;
+    }
+
+    function mergeEntries(i, j) {
+      const a = entries[i];
+      const b = entries[j];
+      const m = {
+        n: a.n + b.n,
+        lsX: a.lsX + b.lsX,
+        lsY: a.lsY + b.lsY,
+        ss: a.ss + b.ss,
+        members: a.members.concat(b.members)
+      };
+
+      const hi = Math.max(i, j);
+      const lo = Math.min(i, j);
+      entries.splice(hi, 1);
+      entries.splice(lo, 1);
+      entries.push(m);
+      mergeCount += 1;
+    }
+
+    function compressIfNeeded() {
+      const B = sliders().B;
+      while (entries.length > B) {
+        let bi = 0;
+        let bj = 1;
+        let bd = Infinity;
+
+        for (let i = 0; i < entries.length; i += 1) {
+          const ci = entryCentroid(entries[i]);
+          for (let j = i + 1; j < entries.length; j += 1) {
+            const cj = entryCentroid(entries[j]);
+            const d = sqDist(ci, cj);
+            if (d < bd) {
+              bd = d;
+              bi = i;
+              bj = j;
+            }
+          }
+        }
+
+        mergeEntries(bi, bj);
+      }
+    }
+
+    function assignProcessedPoints() {
+      for (const p of points) p.cluster = -1;
+
+      for (let i = 0; i < points.length; i += 1) {
+        if (!points[i].processed) continue;
+        let best = 0;
+        let bestD = Infinity;
+        for (let e = 0; e < entries.length; e += 1) {
+          const c = entryCentroid(entries[e]);
+          const d = sqDist(points[i], c);
+          if (d < bestD) {
+            bestD = d;
+            best = e;
+          }
+        }
+        points[i].cluster = best;
+      }
+    }
+
+    function recomputeMetrics() {
+      let processed = 0;
+      let sumR = 0;
+      let maxR = 0;
+
+      for (const p of points) if (p.processed) processed += 1;
+
+      for (const e of entries) {
+        const r = entryRadius(e);
+        sumR += r;
+        if (r > maxR) maxR = r;
+      }
+
+      metrics = {
+        processed,
+        cfCount: entries.length,
+        avgRad: entries.length > 0 ? sumR / entries.length : 0,
+        maxRad: maxR,
+        mergeCount
+      };
+
+      sizeHistory.push({
+        cfCount: metrics.cfCount,
+        avgRad: metrics.avgRad,
+        maxRad: metrics.maxRad
+      });
+      if (sizeHistory.length > 260) sizeHistory = sizeHistory.slice(sizeHistory.length - 260);
+    }
+
+    function updateLegend() {
+      const out = [];
+      const show = Math.min(8, Math.max(1, entries.length));
+      for (let i = 0; i < show; i += 1) {
+        out.push(`<span><span class="dot" style="background:${colorOf(i, 0.95)}"></span>CF ${i}</span>`);
+      }
+      out.push('<span><span class="dot" style="background:#fff"></span>CF中心（×）</span>');
+      out.push('<span><span class="dot" style="background:rgba(255,255,255,0.5)"></span>CF半径リング</span>');
+      document.getElementById('legend').innerHTML = out.join('');
+    }
+
+    function resetInsertion() {
+      order = shuffle(new Array(points.length).fill(0).map((_, i) => i));
+      cursor = 0;
+      entries = [];
+      mergeCount = 0;
+      stepCount = 0;
+      currentPointIdx = -1;
+      sizeHistory = [];
+      for (const p of points) {
+        p.processed = false;
+        p.cluster = -1;
+      }
+      lastAction = {
+        phase: 'init',
+        text: '挿入順を初期化しました。',
+        point: -1,
+        entry: -1,
+        radiusAfter: 0,
+        source: 'init'
+      };
+      recomputeMetrics();
+      updateLegend();
+    }
+
+    function regenerateData() {
+      const s = sliders();
+      const trueK = s.type === 'moons' ? 2 : s.trueK;
+      points = generateData(s.type, s.count, s.sep, s.noise, trueK);
+      resetInsertion();
+    }
+
+    function runOneStep(source) {
+      if (cursor >= order.length) {
+        running = false;
+        return;
+      }
+
+      const s = sliders();
+      const idx = order[cursor];
+      cursor += 1;
+
+      currentPointIdx = idx;
+      const p = points[idx];
+      p.processed = true;
+
+      let target = -1;
+      let action = 'new';
+      let radiusAfter = 0;
+
+      if (entries.length === 0) {
+        entries.push(createEntryFromPoint(p, idx));
+        target = 0;
+        action = 'new';
+      } else {
+        const near = nearestEntryIndex(p);
+        const rAfter = simulateRadiusAfterAbsorb(entries[near], p);
+        radiusAfter = rAfter;
+
+        if (rAfter <= s.T) {
+          absorbPoint(entries[near], p, idx);
+          target = near;
+          action = 'absorb';
+        } else {
+          entries.push(createEntryFromPoint(p, idx));
+          target = entries.length - 1;
+          action = 'new';
+        }
+      }
+
+      const beforeCompress = entries.length;
+      compressIfNeeded();
+      const compressed = beforeCompress - entries.length;
+
+      assignProcessedPoints();
+
+      stepCount += 1;
+      recomputeMetrics();
+
+      lastAction = {
+        phase: 'insert',
+        text: action === 'absorb'
+          ? `点 ${idx} を既存CFへ吸収しました。`
+          : `点 ${idx} で新しいCFを作成しました。`,
+        point: idx,
+        entry: target,
+        radiusAfter,
+        compressed,
+        source
+      };
+
+      if (cursor >= order.length) {
+        running = false;
+      }
+    }
+
+    function drawMainPlot() {
+      const w = plot.width;
+      const h = plot.height;
+      const pad = 56;
+      const xMin = -4;
+      const xMax = 4;
+      const yMin = -4;
+      const yMax = 4;
+      const x2px = x => pad + ((x - xMin) * (w - 2 * pad)) / (xMax - xMin);
+      const y2py = y => h - pad - ((y - yMin) * (h - 2 * pad)) / (yMax - yMin);
+
+      pctx.clearRect(0, 0, w, h);
+      pctx.fillStyle = 'rgba(7,14,30,0.55)';
+      pctx.fillRect(pad, pad, w - 2 * pad, h - 2 * pad);
+
+      pctx.strokeStyle = 'rgba(255,255,255,0.10)';
+      pctx.lineWidth = 1;
+      for (let i = 0; i <= 8; i += 1) {
+        const x = xMin + (i * (xMax - xMin)) / 8;
+        pctx.beginPath();
+        pctx.moveTo(x2px(x), y2py(yMin));
+        pctx.lineTo(x2px(x), y2py(yMax));
+        pctx.stroke();
+      }
+      for (let i = 0; i <= 8; i += 1) {
+        const y = yMin + (i * (yMax - yMin)) / 8;
+        pctx.beginPath();
+        pctx.moveTo(x2px(xMin), y2py(y));
+        pctx.lineTo(x2px(xMax), y2py(y));
+        pctx.stroke();
+      }
+
+      for (const p of points) {
+        if (!p.processed) pctx.fillStyle = 'rgba(170,184,222,0.55)';
+        else pctx.fillStyle = colorOf(Math.max(0, p.cluster), 0.95);
+
+        pctx.beginPath();
+        pctx.arc(x2px(p.x), y2py(p.y), 4.1, 0, Math.PI * 2);
+        pctx.fill();
+      }
+
+      if (lastAction && lastAction.phase === 'insert' && lastAction.entry >= 0 && lastAction.entry < entries.length) {
+        const p = points[lastAction.point];
+        const c = entryCentroid(entries[lastAction.entry]);
+        pctx.strokeStyle = 'rgba(255,208,107,0.88)';
+        pctx.lineWidth = 1.4;
+        pctx.beginPath();
+        pctx.moveTo(x2px(p.x), y2py(p.y));
+        pctx.lineTo(x2px(c.x), y2py(c.y));
+        pctx.stroke();
+      }
+
+      for (let i = 0; i < entries.length; i += 1) {
+        const e = entries[i];
+        const c = entryCentroid(e);
+        const r = entryRadius(e);
+
+        const px = x2px(c.x);
+        const py = y2py(c.y);
+
+        if (showRings.checked) {
+          const rr = r * (w - 2 * pad) / (xMax - xMin);
+          pctx.strokeStyle = colorOf(i, 0.65);
+          pctx.lineWidth = 1.3;
+          pctx.beginPath();
+          pctx.arc(px, py, Math.max(2, rr), 0, Math.PI * 2);
+          pctx.stroke();
+        }
+
+        pctx.strokeStyle = 'rgba(255,255,255,0.95)';
+        pctx.lineWidth = 2.1;
+        pctx.beginPath();
+        pctx.moveTo(px - 6, py - 6);
+        pctx.lineTo(px + 6, py + 6);
+        pctx.stroke();
+        pctx.beginPath();
+        pctx.moveTo(px + 6, py - 6);
+        pctx.lineTo(px - 6, py + 6);
+        pctx.stroke();
+
+        pctx.fillStyle = colorOf(i, 0.95);
+        pctx.font = '11px "Hiragino Sans", sans-serif';
+        pctx.fillText(`CF${i} n=${e.n}`, px + 8, py - 8);
+      }
+
+      if (currentPointIdx >= 0) {
+        const p = points[currentPointIdx];
+        pctx.strokeStyle = 'rgba(255,255,255,0.95)';
+        pctx.lineWidth = 1.8;
+        pctx.beginPath();
+        pctx.arc(x2px(p.x), y2py(p.y), 8.4, 0, Math.PI * 2);
+        pctx.stroke();
+      }
+
+      pctx.fillStyle = 'rgba(232,238,255,0.88)';
+      pctx.font = '12px "Hiragino Sans", sans-serif';
+      pctx.fillText('未処理点は灰色、CF中心は×、リングはCF半径', x2px(-3.95), h - 20);
+    }
+
+    function drawCFPlot() {
+      const w = cfPlot.width;
+      const h = cfPlot.height;
+      const pad = 36;
+
+      cctx.clearRect(0, 0, w, h);
+      cctx.fillStyle = 'rgba(7,14,30,0.55)';
+      cctx.fillRect(pad, 14, w - 2 * pad, h - 24);
+
+      if (entries.length === 0) {
+        cctx.fillStyle = 'rgba(225,233,255,0.82)';
+        cctx.font = '12px "Hiragino Sans", sans-serif';
+        cctx.fillText('挿入が進むとCFエントリの半径・サイズを表示します。', pad + 8, 38);
+        return;
+      }
+
+      const bars = entries.length;
+      const bw = (w - 2 * pad) / bars;
+
+      let maxR = 0;
+      let maxN = 0;
+      for (const e of entries) {
+        maxR = Math.max(maxR, entryRadius(e));
+        maxN = Math.max(maxN, e.n);
+      }
+      maxR = Math.max(maxR, 0.05);
+      maxN = Math.max(maxN, 1);
+
+      for (let i = 0; i < entries.length; i += 1) {
+        const e = entries[i];
+        const r = entryRadius(e);
+        const n = e.n;
+
+        const x = pad + i * bw;
+        const hR = (r / maxR) * (h - 36);
+        const hN = (n / maxN) * (h - 36);
+
+        cctx.fillStyle = colorOf(i, 0.90);
+        cctx.fillRect(x + 1, h - 10 - hN, Math.max(1, bw * 0.55), hN);
+
+        cctx.fillStyle = 'rgba(255,255,255,0.70)';
+        cctx.fillRect(x + bw * 0.62, h - 10 - hR, Math.max(1, bw * 0.32), hR);
+      }
+
+      cctx.fillStyle = 'rgba(230,237,255,0.88)';
+      cctx.font = '11px "Hiragino Sans", sans-serif';
+      cctx.fillText('色バー: CFサイズ n / 白バー: 半径 R', pad + 8, 27);
+      cctx.fillText(`CF=${metrics.cfCount}, avgR=${metrics.avgRad.toFixed(4)}, maxR=${metrics.maxRad.toFixed(4)}`, pad + 8, h - 4);
+    }
+
+    function statusText() {
+      if (metrics.processed >= points.length) {
+        return { level: 'good', text: '全点の挿入が完了しました。CF要約が構築されています。' };
+      }
+      if (metrics.mergeCount > stepCount * 0.2) {
+        return { level: 'warn', text: '圧縮マージが多めです。Bを上げるかTを上げると緩和します。' };
+      }
+      if (metrics.avgRad > sliders().T * 0.9) {
+        return { level: 'warn', text: 'CF半径がしきい値に近いです。新規CFが増えやすい状態です。' };
+      }
+      return { level: 'good', text: '点を逐次挿入し、CF要約を更新中です。' };
+    }
+
+    function updateUI() {
+      const s = sliders();
+      const trueK = s.type === 'moons' ? 2 : s.trueK;
+
+      document.getElementById('thVal').textContent = s.T.toFixed(2);
+      document.getElementById('bVal').textContent = `${s.B}`;
+      document.getElementById('speedVal').textContent = `${s.speed}`;
+      document.getElementById('countVal').textContent = `${s.count}`;
+      document.getElementById('trueKVal').textContent = `${trueK}`;
+      document.getElementById('sepVal').textContent = s.sep.toFixed(1);
+      document.getElementById('noiseVal').textContent = s.noise.toFixed(2);
+
+      trueKRange.disabled = s.type === 'moons';
+
+      document.getElementById('modePill').textContent = running ? 'モード: 挿入中' : 'モード: 停止中';
+      document.getElementById('statePill').textContent = running ? '状態: 計算中' : '状態: 一時停止';
+
+      document.getElementById('stepVal').textContent = `${stepCount}`;
+      document.getElementById('procVal').textContent = `${metrics.processed} / ${points.length}`;
+      document.getElementById('cfCntVal').textContent = `${metrics.cfCount}`;
+      document.getElementById('avgRadVal').textContent = metrics.avgRad.toFixed(5);
+      document.getElementById('maxRadVal').textContent = metrics.maxRad.toFixed(5);
+      document.getElementById('mergeCntVal').textContent = `${metrics.mergeCount}`;
+
+      const st = statusText();
+      const statusBox = document.getElementById('statusBox');
+      statusBox.className = `status ${st.level}`;
+      statusBox.textContent = `評価: ${st.text}`;
+
+      const lines = [];
+      lines.push(`dataset=${s.type}, T=${s.T.toFixed(3)}, B=${s.B}`);
+      lines.push(`step=${stepCount}, processed=${metrics.processed}/${points.length}, CF=${metrics.cfCount}`);
+      lines.push(`avgR=${metrics.avgRad.toFixed(6)}, maxR=${metrics.maxRad.toFixed(6)}, merges=${metrics.mergeCount}`);
+      if (lastAction) {
+        lines.push(`phase=${lastAction.phase}, point=${lastAction.point}, entry=${lastAction.entry}, source=${lastAction.source}`);
+        lines.push(`radiusAfter=${lastAction.radiusAfter.toFixed(6)}, compressed=${lastAction.compressed}`);
+        lines.push(lastAction.text);
+      }
+      const showN = Math.min(8, entries.length);
+      for (let i = 0; i < showN; i += 1) {
+        const c = entryCentroid(entries[i]);
+        lines.push(`CF${i}: n=${entries[i].n}, mu=(${c.x.toFixed(3)},${c.y.toFixed(3)}), R=${entryRadius(entries[i]).toFixed(4)}`);
+      }
+      document.getElementById('detailBox').textContent = lines.join('\n');
+
+      updateLegend();
+    }
+
+    function frame(now) {
+      const dt = now - lastT;
+      lastT = now;
+
+      if (running) {
+        accMs += dt;
+        const stepMs = 1000 / Math.max(1, sliders().speed);
+        let guard = 0;
+        while (accMs >= stepMs && guard < 160) {
+          runOneStep('auto');
+          accMs -= stepMs;
+          guard += 1;
+        }
+      } else {
+        accMs = 0;
+      }
+
+      drawMainPlot();
+      drawCFPlot();
+      updateUI();
+      requestAnimationFrame(frame);
+    }
+
+    document.getElementById('btnPlay').addEventListener('click', () => {
+      running = true;
+    });
+
+    document.getElementById('btnPause').addEventListener('click', () => {
+      running = false;
+    });
+
+    document.getElementById('btnStep').addEventListener('click', () => {
+      running = false;
+      runOneStep('manual');
+    });
+
+    document.getElementById('btnReset').addEventListener('click', () => {
+      running = false;
+      resetInsertion();
+    });
+
+    document.getElementById('btnNew').addEventListener('click', () => {
+      running = false;
+      regenerateData();
+    });
+
+    datasetType.addEventListener('change', () => {
+      running = false;
+      regenerateData();
+    });
+
+    const rebuildData = [countRange, trueKRange, sepRange, noiseRange];
+    for (const r of rebuildData) {
+      r.addEventListener('change', () => {
+        running = false;
+        regenerateData();
+      });
+    }
+
+    thRange.addEventListener('change', () => {
+      running = false;
+      resetInsertion();
+    });
+
+    bRange.addEventListener('change', () => {
+      running = false;
+      compressIfNeeded();
+      assignProcessedPoints();
+      recomputeMetrics();
+    });
+
+    const live = [thRange, bRange, speedRange, countRange, trueKRange, sepRange, noiseRange];
+    for (const r of live) {
+      r.addEventListener('input', updateUI);
+    }
+    showRings.addEventListener('input', updateUI);
+
+    regenerateData();
+    requestAnimationFrame(frame);
+  })();
+  </script>
+</body>
+</html>

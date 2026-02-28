@@ -1,0 +1,1420 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>決定木（二分木）データ分割シミュレータ</title>
+  <style>
+    :root {
+      --bg:#081326;
+      --panel:#0f1f3e;
+      --text:#e9efff;
+      --muted:#aab8de;
+      --line:#2b406e;
+      --pos:#73a7ff;
+      --neg:#ff7d7d;
+      --split:#ffffff;
+      --newsplit:#ffd36d;
+      --leaf:#7ee2a8;
+      --warn:#ffd06b;
+      --good:#67d79a;
+      --bad:#ff8787;
+      --phase:#8db4ff;
+    }
+
+    * { box-sizing:border-box; }
+
+    body {
+      margin:0;
+      min-height:100vh;
+      color:var(--text);
+      font-family:"Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif;
+      background:
+        radial-gradient(circle at 12% 14%, rgba(115,167,255,0.17), transparent 34%),
+        radial-gradient(circle at 88% 10%, rgba(111,223,167,0.16), transparent 28%),
+        linear-gradient(180deg, #060f1d, var(--bg));
+    }
+
+    .top-nav {
+      max-width:1220px;
+      margin:14px auto 0;
+      padding:0 18px;
+      display:flex;
+      gap:14px;
+      flex-wrap:wrap;
+    }
+
+    .top-link {
+      color:var(--muted);
+      text-decoration:none;
+      font-size:13px;
+    }
+
+    .top-link:hover {
+      color:var(--text);
+      text-decoration:underline;
+    }
+
+    .wrap {
+      max-width:1220px;
+      margin:0 auto;
+      padding:16px 18px 24px;
+      display:grid;
+      grid-template-columns:1.22fr 0.78fr;
+      gap:16px;
+    }
+
+    .card {
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,0.09);
+      background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+      padding:14px;
+      box-shadow:0 15px 32px rgba(0,0,0,0.35);
+    }
+
+    h1 {
+      margin:0 0 8px;
+      font-size:19px;
+      line-height:1.35;
+    }
+
+    .sub {
+      margin:0 0 12px;
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.65;
+    }
+
+    .pill {
+      display:inline-block;
+      padding:2px 8px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,0.13);
+      background:rgba(255,255,255,0.05);
+      color:var(--muted);
+      font-size:12px;
+    }
+
+    canvas {
+      width:100%;
+      height:auto;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,0.09);
+      background:rgba(4,10,24,0.45);
+    }
+
+    .legend {
+      margin-top:9px;
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      font-size:12px;
+      color:var(--muted);
+    }
+
+    .dot {
+      display:inline-block;
+      width:10px;
+      height:10px;
+      border-radius:50%;
+      margin-right:6px;
+      vertical-align:middle;
+    }
+
+    .mini-title {
+      margin:12px 0 7px;
+      font-size:13px;
+      color:var(--muted);
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+    }
+
+    .row {
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      align-items:center;
+    }
+
+    button {
+      cursor:pointer;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,0.16);
+      background:rgba(255,255,255,0.06);
+      color:var(--text);
+      font-size:13px;
+      padding:8px 10px;
+      transition:background .2s ease;
+    }
+
+    button:hover { background:rgba(255,255,255,0.11); }
+
+    button.primary {
+      border-color:rgba(115,167,255,0.58);
+      background:rgba(115,167,255,0.21);
+    }
+
+    button.primary:hover { background:rgba(115,167,255,0.28); }
+
+    .selectrow {
+      display:grid;
+      grid-template-columns:108px 1fr;
+      gap:10px;
+      margin:8px 0;
+      align-items:center;
+      font-size:13px;
+    }
+
+    select {
+      width:100%;
+      border-radius:9px;
+      border:1px solid rgba(255,255,255,0.15);
+      background:rgba(255,255,255,0.06);
+      color:var(--text);
+      padding:7px 8px;
+      font-size:13px;
+    }
+
+    .slider {
+      margin:10px 0;
+      display:grid;
+      grid-template-columns:136px 1fr 84px;
+      gap:10px;
+      align-items:center;
+      font-size:13px;
+    }
+
+    input[type="range"] {
+      width:100%;
+      accent-color:#75a8ff;
+    }
+
+    .hr {
+      height:1px;
+      margin:12px 0;
+      background:rgba(255,255,255,0.11);
+    }
+
+    .kv {
+      display:grid;
+      grid-template-columns:1fr auto;
+      gap:8px 10px;
+      font-size:13px;
+    }
+
+    .kv div:nth-child(odd) { color:var(--muted); }
+
+    .status {
+      margin-top:8px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,0.1);
+      background:rgba(0,0,0,0.2);
+      padding:10px;
+      font-size:13px;
+      line-height:1.55;
+    }
+
+    .status.good {
+      border-color:rgba(103,215,154,0.52);
+      background:rgba(103,215,154,0.12);
+    }
+
+    .status.warn {
+      border-color:rgba(255,208,107,0.52);
+      background:rgba(255,208,107,0.12);
+    }
+
+    .status.bad {
+      border-color:rgba(255,135,135,0.55);
+      background:rgba(255,135,135,0.12);
+    }
+
+    .formula {
+      margin-top:8px;
+      border-radius:8px;
+      border:1px solid rgba(255,255,255,0.08);
+      background:rgba(8,16,32,0.55);
+      padding:8px;
+      color:#dce5ff;
+      font-size:12px;
+      line-height:1.6;
+      font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      white-space:pre-wrap;
+    }
+
+    .proc-head {
+      margin-top:4px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      font-size:13px;
+      color:var(--muted);
+    }
+
+    .proc {
+      display:grid;
+      gap:6px;
+      margin-top:8px;
+    }
+
+    .proc-item {
+      font-size:12px;
+      color:var(--muted);
+      border:1px solid rgba(255,255,255,0.08);
+      background:rgba(255,255,255,0.02);
+      border-radius:8px;
+      padding:6px 8px;
+    }
+
+    .proc-item.active {
+      color:var(--text);
+      border-color:rgba(122,162,255,0.45);
+      background:rgba(122,162,255,0.14);
+    }
+
+    .detail {
+      margin-top:6px;
+      border-radius:8px;
+      border:1px solid rgba(255,255,255,0.08);
+      background:rgba(2,8,20,0.55);
+      padding:8px;
+      color:#d8e2ff;
+      font-size:11px;
+      line-height:1.6;
+      max-height:150px;
+      overflow:auto;
+      font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      white-space:pre-wrap;
+    }
+
+    .note {
+      margin:10px 0 0;
+      color:var(--muted);
+      font-size:12px;
+      line-height:1.6;
+    }
+
+    @media (max-width: 990px) {
+      .wrap { grid-template-columns:1fr; }
+      .slider { grid-template-columns:112px 1fr 84px; }
+      .selectrow { grid-template-columns:100px 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="top-nav">
+    <a class="top-link" href="index.html">← 新卒AI研修トップへ戻る</a>
+  </div>
+
+  <div class="wrap">
+    <section class="card">
+      <h1>決定木（二分木）データ分割シミュレータ</h1>
+      <p class="sub">
+        2次元データを <span class="pill">軸平行な二分割</span> で段階的に分ける様子を可視化します。
+        各ステップで「どの葉を分割するか」「どのしきい値が最良か」を表示します。
+      </p>
+
+      <canvas id="plot" width="860" height="520"></canvas>
+
+      <div class="legend" id="classLegend">
+        <span><span class="dot" style="background:var(--pos)"></span>クラス 0</span>
+        <span><span class="dot" style="background:var(--neg)"></span>クラス 1</span>
+      </div>
+      <div class="legend">
+        <span><span class="dot" style="background:var(--split)"></span>既存分割線</span>
+        <span><span class="dot" style="background:var(--newsplit)"></span>直近の分割線</span>
+        <span><span class="dot" style="background:var(--leaf)"></span>今回分割した葉の点</span>
+      </div>
+
+      <div class="mini-title">
+        <span>木構造ビュー（Binary Tree）</span>
+        <span class="pill" id="modePill">モード: 学習中</span>
+      </div>
+      <canvas id="treePlot" width="860" height="260"></canvas>
+    </section>
+
+    <section class="card">
+      <div class="row" style="justify-content:space-between;">
+        <div style="font-size:14px; font-weight:700;">操作パネル</div>
+        <div class="pill" id="statePill">状態: 計算中</div>
+      </div>
+
+      <div class="row" style="margin-top:10px;">
+        <button class="primary" id="btnPlay">再生</button>
+        <button id="btnPause">停止</button>
+        <button id="btnStep">1ステップ</button>
+        <button id="btnReset">木をリセット</button>
+        <button id="btnNew">データ再生成</button>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="selectrow">
+        <div>データ形状</div>
+        <select id="datasetType">
+          <option value="blobs">2ガウス塊（線形寄り）</option>
+          <option value="moons">2つの月（非線形）</option>
+          <option value="xor">XOR 4塊（非線形）</option>
+        </select>
+      </div>
+
+      <div class="selectrow">
+        <div>不純度</div>
+        <select id="criterionType">
+          <option value="gini">Gini</option>
+          <option value="entropy">Entropy</option>
+        </select>
+      </div>
+
+      <div class="slider">
+        <div>最大深さ</div>
+        <input id="depthRange" type="range" min="1" max="8" step="1" value="4" />
+        <div id="depthVal">4</div>
+      </div>
+
+      <div class="slider">
+        <div>最小葉サンプル</div>
+        <input id="minLeafRange" type="range" min="1" max="24" step="1" value="4" />
+        <div id="minLeafVal">4</div>
+      </div>
+
+      <div class="slider">
+        <div>更新/秒</div>
+        <input id="speedRange" type="range" min="1" max="30" step="1" value="6" />
+        <div id="speedVal">6</div>
+      </div>
+
+      <div class="slider">
+        <div>点の数</div>
+        <input id="countRange" type="range" min="24" max="260" step="2" value="120" />
+        <div id="countVal">120</div>
+      </div>
+
+      <div class="slider">
+        <div>クラス数 K</div>
+        <input id="classRange" type="range" min="2" max="6" step="1" value="2" />
+        <div id="classVal">2</div>
+      </div>
+
+      <div class="slider">
+        <div>クラス間隔</div>
+        <input id="sepRange" type="range" min="0.6" max="3.4" step="0.1" value="2.0" />
+        <div id="sepVal">2.0</div>
+      </div>
+
+      <div class="slider">
+        <div>ノイズ σ</div>
+        <input id="noiseRange" type="range" min="0.05" max="1.25" step="0.01" value="0.35" />
+        <div id="noiseVal">0.35</div>
+      </div>
+
+      <div class="slider">
+        <div>ラベル反転率</div>
+        <input id="flipRange" type="range" min="0.00" max="0.30" step="0.01" value="0.03" />
+        <div id="flipVal">0.03</div>
+      </div>
+
+      <div class="formula">criterion(parent) - weighted_children が最大になる split を選択
+Gain = I(parent) - (n_L/n)I(left) - (n_R/n)I(right)
+停止条件: 深さ上限 / 最小葉サンプル未満 / 利得<=0
+※クラス数Kは blobs データで有効（moons/xor は2クラス固定）</div>
+
+      <div class="hr"></div>
+
+      <div class="kv">
+        <div>分割ステップ</div><div id="stepVal">0</div>
+        <div>葉ノード数</div><div id="leafVal">-</div>
+        <div>木の深さ</div><div id="treeDepthVal">-</div>
+        <div>Train Accuracy</div><div id="accVal">-</div>
+        <div>分割候補の葉</div><div id="pendingVal">-</div>
+        <div>直近Gain</div><div id="gainVal">-</div>
+      </div>
+
+      <div id="statusBox" class="status">評価: 初期化中...</div>
+
+      <div class="hr"></div>
+
+      <div class="proc-head">
+        <div>1ステップの計算説明</div>
+        <div class="pill" id="phasePill">手順: 待機中</div>
+      </div>
+
+      <div class="proc" id="proc">
+        <div class="proc-item">1. 分割候補の葉を探索
+          <div class="detail" id="detailPick">-</div>
+        </div>
+        <div class="proc-item">2. 最良しきい値を評価
+          <div class="detail" id="detailEval">-</div>
+        </div>
+        <div class="proc-item">3. 二分木に子ノードを追加
+          <div class="detail" id="detailSplit">-</div>
+        </div>
+        <div class="proc-item">4. 境界更新と精度確認
+          <div class="detail" id="detailCheck">-</div>
+        </div>
+      </div>
+
+      <p class="note">
+        コツ: `moons` や `xor` は直線1本では分けにくく、木を深くすると段階的に分離できます。
+        ただし深くしすぎると過学習しやすくなります。`blobs` ではクラス数Kを増やして多クラス分割を観察できます。
+      </p>
+    </section>
+  </div>
+
+  <script>
+  (() => {
+    function randn() {
+      let u = 0;
+      let v = 0;
+      while (u === 0) u = Math.random();
+      while (v === 0) v = Math.random();
+      return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+    }
+
+    function clamp(v, lo, hi) {
+      return Math.min(hi, Math.max(lo, v));
+    }
+
+    function entropyFromCounts(counts) {
+      const n = counts.reduce((a, b) => a + b, 0);
+      if (n === 0) return 0;
+      let h = 0;
+      for (const c of counts) {
+        if (c <= 0) continue;
+        const p = c / n;
+        h -= p * Math.log2(p);
+      }
+      return h;
+    }
+
+    function giniFromCounts(counts) {
+      const n = counts.reduce((a, b) => a + b, 0);
+      if (n === 0) return 0;
+      let sumSq = 0;
+      for (const c of counts) {
+        const p = c / n;
+        sumSq += p * p;
+      }
+      return 1 - sumSq;
+    }
+
+    function samplePoint(type, label, sep, noise, classCount) {
+      if (type === 'blobs') {
+        const radius = sep * 1.1 + 0.45;
+        const angle = (Math.PI * 2 * label) / Math.max(1, classCount);
+        const cx = radius * Math.cos(angle);
+        const cy = radius * Math.sin(angle) * 0.78;
+        return {
+          x: cx + randn() * noise,
+          y: cy + randn() * noise
+        };
+      }
+
+      if (type === 'moons') {
+        const t = Math.random() * Math.PI;
+        let x;
+        let y;
+        if (label === 1) {
+          x = Math.cos(t);
+          y = Math.sin(t);
+        } else {
+          x = 1 - Math.cos(t);
+          y = -Math.sin(t) - 0.5;
+        }
+        const scale = 2.0 + sep * 0.36;
+        x = (x - 0.55) * scale + (label === 1 ? -sep * 0.22 : sep * 0.22);
+        y = (y - 0.08) * scale;
+        x += randn() * noise;
+        y += randn() * noise;
+        return { x, y };
+      }
+
+      const signX = Math.random() < 0.5 ? -1 : 1;
+      const signY = Math.random() < 0.5 ? -1 : 1;
+      const x = signX * sep * 0.9 + randn() * noise;
+      const y = signY * sep * 0.9 + randn() * noise;
+      const trueLabel = signX === signY ? 1 : 0;
+      return { x, y, trueLabel };
+    }
+
+    function randomOtherClass(label, classCount) {
+      if (classCount <= 1) return label;
+      let other = label;
+      while (other === label) {
+        other = Math.floor(Math.random() * classCount);
+      }
+      return other;
+    }
+
+    function generateData(type, count, sep, noise, flipRate, classCount) {
+      const arr = [];
+      for (let i = 0; i < count; i += 1) {
+        let trueLabel = 0;
+        let s;
+
+        if (type === 'blobs') {
+          trueLabel = i % classCount;
+          s = samplePoint(type, trueLabel, sep, noise, classCount);
+        } else if (type === 'xor') {
+          s = samplePoint(type, 0, sep, noise, classCount);
+          trueLabel = s.trueLabel;
+        } else {
+          trueLabel = i < count / 2 ? 1 : 0;
+          s = samplePoint(type, trueLabel, sep, noise, classCount);
+        }
+
+        let label = trueLabel;
+        let flipped = false;
+        if (Math.random() < flipRate) {
+          label = randomOtherClass(trueLabel, classCount);
+          flipped = true;
+        }
+
+        arr.push({
+          x: clamp(s.x, -4, 4),
+          y: clamp(s.y, -4, 4),
+          label,
+          trueLabel,
+          flipped,
+          pred: 0
+        });
+      }
+      return arr;
+    }
+
+    const plot = document.getElementById('plot');
+    const pctx = plot.getContext('2d');
+    const treePlot = document.getElementById('treePlot');
+    const tctx = treePlot.getContext('2d');
+    const classLegend = document.getElementById('classLegend');
+
+    const datasetType = document.getElementById('datasetType');
+    const criterionType = document.getElementById('criterionType');
+
+    const depthRange = document.getElementById('depthRange');
+    const minLeafRange = document.getElementById('minLeafRange');
+    const speedRange = document.getElementById('speedRange');
+    const countRange = document.getElementById('countRange');
+    const classRange = document.getElementById('classRange');
+    const sepRange = document.getElementById('sepRange');
+    const noiseRange = document.getElementById('noiseRange');
+    const flipRange = document.getElementById('flipRange');
+
+    const procItems = Array.from(document.querySelectorAll('#proc .proc-item'));
+
+    let data = [];
+    let root = null;
+    let nextNodeId = 1;
+    let running = true;
+    let stepCount = 0;
+    let metrics = null;
+    let lastStep = null;
+
+    let lastT = performance.now();
+    let accMs = 0;
+
+    const phaseDurationMs = 1500;
+    const classPalette = [
+      [115, 167, 255],
+      [255, 125, 125],
+      [126, 226, 168],
+      [255, 211, 109],
+      [213, 155, 255],
+      [135, 220, 255],
+      [255, 168, 107],
+      [145, 161, 255]
+    ];
+
+    function sliders() {
+      return {
+        type: datasetType.value,
+        criterion: criterionType.value,
+        maxDepth: parseInt(depthRange.value, 10),
+        minLeaf: parseInt(minLeafRange.value, 10),
+        speed: parseInt(speedRange.value, 10),
+        count: parseInt(countRange.value, 10),
+        classCount: parseInt(classRange.value, 10),
+        sep: parseFloat(sepRange.value),
+        noise: parseFloat(noiseRange.value),
+        flip: parseFloat(flipRange.value)
+      };
+    }
+
+    function effectiveClassCount(s = sliders()) {
+      return s.type === 'blobs' ? s.classCount : 2;
+    }
+
+    function classColor(classId, alpha) {
+      const c = classPalette[classId % classPalette.length];
+      return `rgba(${c[0]},${c[1]},${c[2]},${alpha})`;
+    }
+
+    function updateClassLegend() {
+      const s = sliders();
+      const k = effectiveClassCount(s);
+      const parts = [];
+      for (let i = 0; i < k; i += 1) {
+        parts.push(`<span><span class=\"dot\" style=\"background:${classColor(i, 0.96)}\"></span>クラス ${i}</span>`);
+      }
+      classLegend.innerHTML = parts.join('');
+    }
+
+    function updateClassControl() {
+      const isBlobs = datasetType.value === 'blobs';
+      classRange.disabled = !isBlobs;
+      updateClassLegend();
+    }
+
+    function impurityFromCounts(counts, criterion) {
+      return criterion === 'entropy' ? entropyFromCounts(counts) : giniFromCounts(counts);
+    }
+
+    function countByClass(indices, classCount) {
+      const counts = new Array(classCount).fill(0);
+      for (const idx of indices) {
+        const label = data[idx].label;
+        if (label >= 0 && label < classCount) counts[label] += 1;
+      }
+      const n = counts.reduce((a, b) => a + b, 0);
+      return { counts, n };
+    }
+
+    function majorityClass(counts) {
+      let bestClass = 0;
+      let bestCount = -1;
+      for (let i = 0; i < counts.length; i += 1) {
+        if (counts[i] > bestCount) {
+          bestCount = counts[i];
+          bestClass = i;
+        }
+      }
+      return bestClass;
+    }
+
+    function formatCounts(counts) {
+      const pieces = [];
+      for (let i = 0; i < counts.length; i += 1) {
+        if (counts[i] > 0 || counts.length <= 3) {
+          pieces.push(`c${i}:${counts[i]}`);
+        }
+      }
+      return pieces.join(' ');
+    }
+
+    function makeNode(depth, indices, bounds) {
+      const s = sliders();
+      const classCount = effectiveClassCount(s);
+      const c = countByClass(indices, classCount);
+      return {
+        id: nextNodeId++,
+        depth,
+        indices,
+        bounds,
+        classCounts: c.counts,
+        n: c.n,
+        impurity: impurityFromCounts(c.counts, s.criterion),
+        label: majorityClass(c.counts),
+        split: null,
+        left: null,
+        right: null,
+        isLeaf: true
+      };
+    }
+
+    function createRoot() {
+      nextNodeId = 1;
+      const all = Array.from({ length: data.length }, (_, i) => i);
+      return makeNode(0, all, {
+        xmin: -4,
+        xmax: 4,
+        ymin: -4,
+        ymax: 4
+      });
+    }
+
+    function collectLeaves(node, arr) {
+      if (!node) return;
+      if (node.isLeaf) {
+        arr.push(node);
+        return;
+      }
+      collectLeaves(node.left, arr);
+      collectLeaves(node.right, arr);
+    }
+
+    function collectInternals(node, arr) {
+      if (!node) return;
+      if (!node.isLeaf) {
+        arr.push(node);
+        collectInternals(node.left, arr);
+        collectInternals(node.right, arr);
+      }
+    }
+
+    function bestSplitForLeaf(leaf) {
+      const s = sliders();
+      const classCount = effectiveClassCount(s);
+      const n = leaf.indices.length;
+      if (leaf.depth >= s.maxDepth) return null;
+      if (n < s.minLeaf * 2) return null;
+      if (leaf.impurity <= 1e-12) return null;
+
+      const parentImpurity = leaf.impurity;
+      let best = null;
+
+      const axes = ['x', 'y'];
+      for (const axis of axes) {
+        const sorted = leaf.indices
+          .map(idx => ({ idx, value: data[idx][axis], label: data[idx].label }))
+          .sort((a, b) => a.value - b.value);
+
+        const leftCounts = new Array(classCount).fill(0);
+        const totalCounts = leaf.classCounts.slice();
+
+        for (let i = 0; i < sorted.length - 1; i += 1) {
+          leftCounts[sorted[i].label] += 1;
+
+          const vNow = sorted[i].value;
+          const vNext = sorted[i + 1].value;
+          if (Math.abs(vNow - vNext) < 1e-12) continue;
+
+          const leftN = i + 1;
+          const rightN = n - leftN;
+          if (leftN < s.minLeaf || rightN < s.minLeaf) continue;
+
+          const rightCounts = new Array(classCount);
+          for (let c = 0; c < classCount; c += 1) {
+            rightCounts[c] = totalCounts[c] - leftCounts[c];
+          }
+
+          const impLeft = impurityFromCounts(leftCounts, s.criterion);
+          const impRight = impurityFromCounts(rightCounts, s.criterion);
+          const weighted = (leftN / n) * impLeft + (rightN / n) * impRight;
+          const gain = parentImpurity - weighted;
+
+          if (!best || gain > best.gain) {
+            best = {
+              axis,
+              threshold: (vNow + vNext) / 2,
+              gain,
+              parentImpurity,
+              weighted,
+              leftN,
+              rightN,
+              impLeft,
+              impRight,
+              leftCounts: leftCounts.slice(),
+              rightCounts: rightCounts.slice()
+            };
+          }
+        }
+      }
+
+      if (!best || best.gain <= 1e-10) return null;
+      return best;
+    }
+
+    function predictNode(node, x, y) {
+      let cur = node;
+      while (!cur.isLeaf) {
+        const axis = cur.split.axis;
+        const thr = cur.split.threshold;
+        const v = axis === 'x' ? x : y;
+        cur = v < thr ? cur.left : cur.right;
+      }
+      return cur.label;
+    }
+
+    function maxDepth(node) {
+      if (!node) return 0;
+      if (node.isLeaf) return node.depth;
+      return Math.max(maxDepth(node.left), maxDepth(node.right));
+    }
+
+    function evaluate(node) {
+      let correct = 0;
+      for (const p of data) {
+        p.pred = predictNode(node, p.x, p.y);
+        if (p.pred === p.label) correct += 1;
+      }
+
+      const leaves = [];
+      collectLeaves(node, leaves);
+      let splittable = 0;
+      for (const lf of leaves) {
+        if (bestSplitForLeaf(lf)) splittable += 1;
+      }
+
+      return {
+        acc: correct / Math.max(1, data.length),
+        leaves: leaves.length,
+        depth: maxDepth(node),
+        pending: splittable
+      };
+    }
+
+    function resetTree() {
+      root = createRoot();
+      stepCount = 0;
+      lastStep = null;
+      metrics = evaluate(root);
+    }
+
+    function regenerateData() {
+      const s = sliders();
+      const k = effectiveClassCount(s);
+      data = generateData(s.type, s.count, s.sep, s.noise, s.flip, k);
+      resetTree();
+    }
+
+    function runOneStep(source) {
+      const leaves = [];
+      collectLeaves(root, leaves);
+
+      let chosenLeaf = null;
+      let chosenSplit = null;
+      let checked = 0;
+
+      for (const lf of leaves) {
+        const split = bestSplitForLeaf(lf);
+        if (!split) continue;
+        checked += 1;
+        if (!chosenSplit || split.gain > chosenSplit.gain) {
+          chosenLeaf = lf;
+          chosenSplit = split;
+        }
+      }
+
+      if (!chosenLeaf || !chosenSplit) {
+        running = false;
+        return false;
+      }
+
+      const beforeMetrics = evaluate(root);
+
+      const axis = chosenSplit.axis;
+      const thr = chosenSplit.threshold;
+
+      const leftIndices = [];
+      const rightIndices = [];
+      for (const idx of chosenLeaf.indices) {
+        const v = axis === 'x' ? data[idx].x : data[idx].y;
+        if (v < thr) leftIndices.push(idx);
+        else rightIndices.push(idx);
+      }
+
+      const leftBounds = {
+        xmin: chosenLeaf.bounds.xmin,
+        xmax: chosenLeaf.bounds.xmax,
+        ymin: chosenLeaf.bounds.ymin,
+        ymax: chosenLeaf.bounds.ymax
+      };
+      const rightBounds = {
+        xmin: chosenLeaf.bounds.xmin,
+        xmax: chosenLeaf.bounds.xmax,
+        ymin: chosenLeaf.bounds.ymin,
+        ymax: chosenLeaf.bounds.ymax
+      };
+
+      if (axis === 'x') {
+        leftBounds.xmax = thr;
+        rightBounds.xmin = thr;
+      } else {
+        leftBounds.ymax = thr;
+        rightBounds.ymin = thr;
+      }
+
+      const leftNode = makeNode(chosenLeaf.depth + 1, leftIndices, leftBounds);
+      const rightNode = makeNode(chosenLeaf.depth + 1, rightIndices, rightBounds);
+
+      chosenLeaf.isLeaf = false;
+      chosenLeaf.split = chosenSplit;
+      chosenLeaf.left = leftNode;
+      chosenLeaf.right = rightNode;
+
+      stepCount += 1;
+      const afterMetrics = evaluate(root);
+
+      const now = performance.now();
+      lastStep = {
+        source,
+        start: now,
+        checkedLeaves: checked,
+        totalLeaves: leaves.length,
+        leafId: chosenLeaf.id,
+        leafDepth: chosenLeaf.depth,
+        leafN: chosenLeaf.n,
+        leafCounts: chosenLeaf.classCounts.slice(),
+        axis,
+        threshold: thr,
+        gain: chosenSplit.gain,
+        parentImpurity: chosenSplit.parentImpurity,
+        weightedImpurity: chosenSplit.weighted,
+        impLeft: chosenSplit.impLeft,
+        impRight: chosenSplit.impRight,
+        leftN: leftIndices.length,
+        rightN: rightIndices.length,
+        leftCounts: chosenSplit.leftCounts.slice(),
+        rightCounts: chosenSplit.rightCounts.slice(),
+        beforeAcc: beforeMetrics.acc,
+        afterAcc: afterMetrics.acc,
+        deltaAcc: afterMetrics.acc - beforeMetrics.acc,
+        beforeLeaves: beforeMetrics.leaves,
+        afterLeaves: afterMetrics.leaves
+      };
+
+      metrics = afterMetrics;
+      return true;
+    }
+
+    function drawPlot() {
+      const w = plot.width;
+      const h = plot.height;
+      const pad = 56;
+      const xMin = -4;
+      const xMax = 4;
+      const yMin = -4;
+      const yMax = 4;
+      const x2px = x => pad + ((x - xMin) * (w - 2 * pad)) / (xMax - xMin);
+      const y2py = y => h - pad - ((y - yMin) * (h - 2 * pad)) / (yMax - yMin);
+
+      pctx.clearRect(0, 0, w, h);
+      pctx.fillStyle = 'rgba(7,14,30,0.55)';
+      pctx.fillRect(pad, pad, w - 2 * pad, h - 2 * pad);
+
+      const leaves = [];
+      collectLeaves(root, leaves);
+      for (const lf of leaves) {
+        pctx.fillStyle = classColor(lf.label, 0.09);
+        pctx.fillRect(
+          x2px(lf.bounds.xmin),
+          y2py(lf.bounds.ymax),
+          x2px(lf.bounds.xmax) - x2px(lf.bounds.xmin),
+          y2py(lf.bounds.ymin) - y2py(lf.bounds.ymax)
+        );
+      }
+
+      pctx.strokeStyle = 'rgba(255,255,255,0.10)';
+      pctx.lineWidth = 1;
+      for (let i = 0; i <= 8; i += 1) {
+        const x = xMin + (i * (xMax - xMin)) / 8;
+        pctx.beginPath();
+        pctx.moveTo(x2px(x), y2py(yMin));
+        pctx.lineTo(x2px(x), y2py(yMax));
+        pctx.stroke();
+      }
+      for (let i = 0; i <= 8; i += 1) {
+        const y = yMin + (i * (yMax - yMin)) / 8;
+        pctx.beginPath();
+        pctx.moveTo(x2px(xMin), y2py(y));
+        pctx.lineTo(x2px(xMax), y2py(y));
+        pctx.stroke();
+      }
+
+      const internals = [];
+      collectInternals(root, internals);
+      for (const node of internals) {
+        const isNew = lastStep && lastStep.leafId === node.id;
+        pctx.strokeStyle = isNew ? 'rgba(255,211,109,0.95)' : 'rgba(255,255,255,0.78)';
+        pctx.lineWidth = isNew ? 2.6 : 1.2;
+
+        if (node.split.axis === 'x') {
+          const x = node.split.threshold;
+          pctx.beginPath();
+          pctx.moveTo(x2px(x), y2py(node.bounds.ymin));
+          pctx.lineTo(x2px(x), y2py(node.bounds.ymax));
+          pctx.stroke();
+        } else {
+          const y = node.split.threshold;
+          pctx.beginPath();
+          pctx.moveTo(x2px(node.bounds.xmin), y2py(y));
+          pctx.lineTo(x2px(node.bounds.xmax), y2py(y));
+          pctx.stroke();
+        }
+      }
+
+      for (let i = 0; i < data.length; i += 1) {
+        const p = data[i];
+        const inLastLeaf = lastStep && root && pointInLeafOfLastStep(i);
+
+        pctx.fillStyle = classColor(p.label, 0.96);
+        pctx.beginPath();
+        pctx.arc(x2px(p.x), y2py(p.y), p.flipped ? 4.6 : 4.0, 0, Math.PI * 2);
+        pctx.fill();
+
+        if (p.pred !== p.label) {
+          pctx.strokeStyle = 'rgba(255,255,255,0.95)';
+          pctx.lineWidth = 1.2;
+          pctx.beginPath();
+          pctx.arc(x2px(p.x), y2py(p.y), 7.2, 0, Math.PI * 2);
+          pctx.stroke();
+        }
+
+        if (inLastLeaf) {
+          pctx.strokeStyle = 'rgba(126,226,168,0.95)';
+          pctx.lineWidth = 1.4;
+          pctx.beginPath();
+          pctx.arc(x2px(p.x), y2py(p.y), 8.2, 0, Math.PI * 2);
+          pctx.stroke();
+        }
+      }
+
+      pctx.fillStyle = 'rgba(232,238,255,0.88)';
+      pctx.font = '12px "Hiragino Sans", sans-serif';
+      pctx.fillText('表示範囲 x,y ∈ [-4, 4]', x2px(-3.95), h - 20);
+    }
+
+    function pointInLeafOfLastStep(pointIdx) {
+      if (!lastStep) return false;
+      const targetLeafId = lastStep.leafId;
+
+      function findNode(node) {
+        if (!node) return null;
+        if (node.id === targetLeafId) return node;
+        const l = findNode(node.left);
+        if (l) return l;
+        return findNode(node.right);
+      }
+
+      const node = findNode(root);
+      if (!node) return false;
+      if (!node.indices) return false;
+      return node.indices.includes(pointIdx);
+    }
+
+    function layoutTree(node) {
+      const leaves = [];
+      collectLeaves(node, leaves);
+      const leafCount = Math.max(1, leaves.length);
+      const maxD = Math.max(1, maxDepth(node));
+      const marginX = 26;
+      const marginY = 22;
+      const w = treePlot.width;
+      const h = treePlot.height;
+      const stepX = leafCount === 1 ? 0 : (w - 2 * marginX) / (leafCount - 1);
+      const stepY = (h - 2 * marginY) / Math.max(1, maxD);
+
+      let leafOrder = 0;
+      const pos = new Map();
+
+      function assign(cur) {
+        if (cur.isLeaf) {
+          const x = marginX + stepX * leafOrder;
+          leafOrder += 1;
+          const y = marginY + cur.depth * stepY;
+          pos.set(cur.id, { x, y });
+          return x;
+        }
+        const lx = assign(cur.left);
+        const rx = assign(cur.right);
+        const x = (lx + rx) / 2;
+        const y = marginY + cur.depth * stepY;
+        pos.set(cur.id, { x, y });
+        return x;
+      }
+
+      assign(node);
+      return pos;
+    }
+
+    function drawTree() {
+      const w = treePlot.width;
+      const h = treePlot.height;
+      tctx.clearRect(0, 0, w, h);
+      tctx.fillStyle = 'rgba(7,14,30,0.55)';
+      tctx.fillRect(12, 12, w - 24, h - 24);
+
+      const pos = layoutTree(root);
+
+      function drawEdges(node) {
+        if (!node || node.isLeaf) return;
+        const p = pos.get(node.id);
+        const l = pos.get(node.left.id);
+        const r = pos.get(node.right.id);
+
+        tctx.strokeStyle = 'rgba(255,255,255,0.34)';
+        tctx.lineWidth = 1.2;
+        tctx.beginPath();
+        tctx.moveTo(p.x, p.y);
+        tctx.lineTo(l.x, l.y);
+        tctx.stroke();
+        tctx.beginPath();
+        tctx.moveTo(p.x, p.y);
+        tctx.lineTo(r.x, r.y);
+        tctx.stroke();
+
+        drawEdges(node.left);
+        drawEdges(node.right);
+      }
+
+      drawEdges(root);
+
+      function drawNodes(node) {
+        if (!node) return;
+        const p = pos.get(node.id);
+        const isLast = lastStep && lastStep.leafId === node.id;
+
+        if (node.isLeaf) {
+          tctx.fillStyle = classColor(node.label, 0.9);
+        } else {
+          tctx.fillStyle = 'rgba(255,255,255,0.88)';
+        }
+
+        tctx.beginPath();
+        tctx.arc(p.x, p.y, 10, 0, Math.PI * 2);
+        tctx.fill();
+
+        if (isLast) {
+          tctx.strokeStyle = 'rgba(255,211,109,0.95)';
+          tctx.lineWidth = 2.2;
+          tctx.beginPath();
+          tctx.arc(p.x, p.y, 13.5, 0, Math.PI * 2);
+          tctx.stroke();
+        }
+
+        tctx.fillStyle = '#081326';
+        tctx.font = '10px "Hiragino Sans", sans-serif';
+        tctx.textAlign = 'center';
+        tctx.textBaseline = 'middle';
+        tctx.fillText(`${node.id}`, p.x, p.y);
+
+        if (!node.isLeaf) {
+          tctx.fillStyle = 'rgba(230,237,255,0.88)';
+          tctx.font = '10px "Hiragino Sans", sans-serif';
+          const sym = node.split.axis === 'x' ? 'x' : 'y';
+          tctx.fillText(`${sym}<${node.split.threshold.toFixed(2)}`, p.x, p.y - 16);
+        }
+
+        drawNodes(node.left);
+        drawNodes(node.right);
+      }
+
+      drawNodes(root);
+
+      tctx.textAlign = 'left';
+      tctx.textBaseline = 'alphabetic';
+      tctx.fillStyle = 'rgba(230,237,255,0.86)';
+      tctx.font = '11px "Hiragino Sans", sans-serif';
+      tctx.fillText('各ノードの数字は node id（白=内部ノード, 色付き=葉）', 18, h - 12);
+    }
+
+    function currentPhase(now) {
+      if (!lastStep) return -1;
+      const elapsed = now - lastStep.start;
+      return Math.min(3, Math.floor(elapsed / (phaseDurationMs / 4)));
+    }
+
+    function updateProcedure(now) {
+      const phaseLabels = [
+        '手順: 1/4 候補探索中',
+        '手順: 2/4 しきい値評価中',
+        '手順: 3/4 木更新中',
+        '手順: 4/4 精度確認中'
+      ];
+
+      if (!lastStep) {
+        document.getElementById('phasePill').textContent = '手順: 待機中';
+        for (const item of procItems) item.classList.remove('active');
+        document.getElementById('detailPick').textContent = '-';
+        document.getElementById('detailEval').textContent = '-';
+        document.getElementById('detailSplit').textContent = '-';
+        document.getElementById('detailCheck').textContent = '-';
+        return;
+      }
+
+      const phase = currentPhase(now);
+      document.getElementById('phasePill').textContent = phaseLabels[Math.max(0, phase)];
+      for (let i = 0; i < procItems.length; i += 1) {
+        procItems[i].classList.toggle('active', i === phase);
+      }
+
+      document.getElementById('detailPick').textContent = [
+        `葉ノード総数 = ${lastStep.totalLeaves}`,
+        `分割可能な葉 = ${lastStep.checkedLeaves}`,
+        `選択された葉 id = ${lastStep.leafId}`,
+        `深さ = ${lastStep.leafDepth}, サンプル数 = ${lastStep.leafN}`,
+        `クラス内訳 = ${formatCounts(lastStep.leafCounts)}`
+      ].join('\n');
+
+      document.getElementById('detailEval').textContent = [
+        `criterion = ${sliders().criterion}`,
+        `parent impurity = ${lastStep.parentImpurity.toFixed(6)}`,
+        `axis = ${lastStep.axis}, threshold = ${lastStep.threshold.toFixed(6)}`,
+        `left: n=${lastStep.leftN}, imp=${lastStep.impLeft.toFixed(6)}, counts=${formatCounts(lastStep.leftCounts)}`,
+        `right: n=${lastStep.rightN}, imp=${lastStep.impRight.toFixed(6)}, counts=${formatCounts(lastStep.rightCounts)}`,
+        `weighted child impurity = ${lastStep.weightedImpurity.toFixed(6)}`,
+        `gain = ${lastStep.gain.toFixed(6)}`
+      ].join('\n');
+
+      document.getElementById('detailSplit').textContent = [
+        `node ${lastStep.leafId} を内部ノードへ変更`,
+        `左子: x/y 領域をしきい値で制限`,
+        `右子: 反対側の領域を担当`,
+        `葉数: ${lastStep.beforeLeaves} -> ${lastStep.afterLeaves}`
+      ].join('\n');
+
+      document.getElementById('detailCheck').textContent = [
+        `accuracy(before) = ${(lastStep.beforeAcc * 100).toFixed(2)}%`,
+        `accuracy(after)  = ${(lastStep.afterAcc * 100).toFixed(2)}%`,
+        `delta = ${(lastStep.deltaAcc * 100).toFixed(2)} pt`,
+        `step source = ${lastStep.source === 'manual' ? 'manual' : 'auto'}`
+      ].join('\n');
+    }
+
+    function statusText() {
+      if (!metrics) {
+        return { level: 'warn', text: '初期化中です。' };
+      }
+      if (metrics.pending === 0) {
+        if (metrics.acc > 0.93) {
+          return { level: 'good', text: '分割が完了しました。高い訓練精度です。過学習の有無を確認してください。' };
+        }
+        return { level: 'warn', text: '分割候補がなく停止しました。深さや最小葉サンプルを調整すると改善する場合があります。' };
+      }
+      if (lastStep && lastStep.deltaAcc < 0) {
+        return { level: 'warn', text: '直近ステップで精度が低下しました。ノイズやラベル反転率の影響が考えられます。' };
+      }
+      return { level: 'good', text: '分割を継続中です。Gainの大きい葉から順に二分しています。' };
+    }
+
+    function updateUI(now) {
+      const s = sliders();
+      const kEff = effectiveClassCount(s);
+
+      document.getElementById('depthVal').textContent = `${s.maxDepth}`;
+      document.getElementById('minLeafVal').textContent = `${s.minLeaf}`;
+      document.getElementById('speedVal').textContent = `${s.speed}`;
+      document.getElementById('countVal').textContent = `${s.count}`;
+      document.getElementById('classVal').textContent = `${kEff}`;
+      document.getElementById('sepVal').textContent = s.sep.toFixed(1);
+      document.getElementById('noiseVal').textContent = s.noise.toFixed(2);
+      document.getElementById('flipVal').textContent = s.flip.toFixed(2);
+      classRange.disabled = s.type !== 'blobs';
+      updateClassLegend();
+
+      document.getElementById('modePill').textContent = running ? 'モード: 学習中' : 'モード: 停止中';
+      document.getElementById('statePill').textContent = running ? '状態: 計算中' : '状態: 一時停止';
+
+      document.getElementById('stepVal').textContent = `${stepCount}`;
+      document.getElementById('leafVal').textContent = metrics ? `${metrics.leaves}` : '-';
+      document.getElementById('treeDepthVal').textContent = metrics ? `${metrics.depth}` : '-';
+      document.getElementById('accVal').textContent = metrics ? `${(metrics.acc * 100).toFixed(2)}%` : '-';
+      document.getElementById('pendingVal').textContent = metrics ? `${metrics.pending}` : '-';
+      document.getElementById('gainVal').textContent = lastStep ? lastStep.gain.toFixed(6) : '-';
+
+      const st = statusText();
+      const statusBox = document.getElementById('statusBox');
+      statusBox.className = `status ${st.level}`;
+      statusBox.textContent = `評価: ${st.text}`;
+
+      updateProcedure(now);
+    }
+
+    function frame(now) {
+      const dt = now - lastT;
+      lastT = now;
+
+      if (running) {
+        accMs += dt;
+        const stepMs = 1000 / Math.max(1, sliders().speed);
+        let guard = 0;
+        while (accMs >= stepMs && guard < 200) {
+          const ok = runOneStep('auto');
+          accMs -= stepMs;
+          guard += 1;
+          if (!ok) {
+            break;
+          }
+        }
+      } else {
+        accMs = 0;
+      }
+
+      drawPlot();
+      drawTree();
+      updateUI(now);
+      requestAnimationFrame(frame);
+    }
+
+    document.getElementById('btnPlay').addEventListener('click', () => {
+      running = true;
+    });
+
+    document.getElementById('btnPause').addEventListener('click', () => {
+      running = false;
+    });
+
+    document.getElementById('btnStep').addEventListener('click', () => {
+      running = false;
+      runOneStep('manual');
+    });
+
+    document.getElementById('btnReset').addEventListener('click', () => {
+      running = false;
+      resetTree();
+    });
+
+    document.getElementById('btnNew').addEventListener('click', () => {
+      running = false;
+      regenerateData();
+    });
+
+    datasetType.addEventListener('change', () => {
+      running = false;
+      updateClassControl();
+      regenerateData();
+    });
+
+    criterionType.addEventListener('change', () => {
+      running = false;
+      resetTree();
+    });
+
+    depthRange.addEventListener('change', () => {
+      running = false;
+      resetTree();
+    });
+
+    minLeafRange.addEventListener('change', () => {
+      running = false;
+      resetTree();
+    });
+
+    countRange.addEventListener('change', () => {
+      running = false;
+      regenerateData();
+    });
+
+    classRange.addEventListener('change', () => {
+      running = false;
+      regenerateData();
+    });
+
+    sepRange.addEventListener('change', () => {
+      running = false;
+      regenerateData();
+    });
+
+    noiseRange.addEventListener('change', () => {
+      running = false;
+      regenerateData();
+    });
+
+    flipRange.addEventListener('change', () => {
+      running = false;
+      regenerateData();
+    });
+
+    const liveRanges = [depthRange, minLeafRange, speedRange, countRange, classRange, sepRange, noiseRange, flipRange];
+    for (const r of liveRanges) {
+      r.addEventListener('input', () => updateUI(performance.now()));
+    }
+
+    updateClassControl();
+    regenerateData();
+    requestAnimationFrame(frame);
+  })();
+  </script>
+</body>
+</html>

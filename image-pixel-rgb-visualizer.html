@@ -1,0 +1,1175 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>画像は数字の集まり | ピクセルRGB可視化ラボ</title>
+  <style>
+    :root {
+      --bg:#071326;
+      --panel:#0d1d3a;
+      --panel-soft:#13264b;
+      --text:#ebf1ff;
+      --muted:#aebde1;
+      --line:#2b4072;
+      --accent:#79a8ff;
+      --good:#6de3a7;
+      --warn:#ffd17f;
+      --r:#ff7a7a;
+      --g:#7dff9f;
+      --b:#7fb2ff;
+    }
+
+    * { box-sizing:border-box; }
+
+    body {
+      margin:0;
+      min-height:100vh;
+      color:var(--text);
+      font-family:"Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif;
+      background:
+        radial-gradient(circle at 10% 12%, rgba(121,168,255,0.20), transparent 28%),
+        radial-gradient(circle at 88% 8%, rgba(109,227,167,0.15), transparent 26%),
+        linear-gradient(180deg, #050d1a, var(--bg));
+    }
+
+    .top-nav {
+      max-width:1280px;
+      margin:14px auto 0;
+      padding:0 18px;
+    }
+
+    .top-link {
+      font-size:13px;
+      color:var(--muted);
+      text-decoration:none;
+    }
+
+    .top-link:hover {
+      color:var(--text);
+      text-decoration:underline;
+    }
+
+    .wrap {
+      max-width:1280px;
+      margin:0 auto;
+      padding:16px 18px 24px;
+      display:grid;
+      gap:16px;
+      grid-template-columns:1.22fr 0.78fr;
+    }
+
+    .card {
+      border:1px solid rgba(255,255,255,0.10);
+      border-radius:14px;
+      background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+      box-shadow:0 14px 30px rgba(0,0,0,0.35);
+      padding:14px;
+    }
+
+    h1 {
+      margin:0 0 8px;
+      font-size:20px;
+      line-height:1.35;
+    }
+
+    .sub {
+      margin:0 0 12px;
+      font-size:13px;
+      line-height:1.65;
+      color:var(--muted);
+    }
+
+    .pill {
+      display:inline-block;
+      padding:2px 8px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,0.14);
+      background:rgba(255,255,255,0.06);
+      color:#d6e3ff;
+      font-size:12px;
+    }
+
+    .canvas-wrap {
+      display:grid;
+      gap:10px;
+    }
+
+    canvas {
+      width:100%;
+      height:auto;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,0.11);
+      background:rgba(3,9,22,0.55);
+    }
+
+    .legend {
+      margin-top:9px;
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      color:var(--muted);
+      font-size:12px;
+    }
+
+    .dot {
+      width:10px;
+      height:10px;
+      border-radius:50%;
+      display:inline-block;
+      margin-right:6px;
+      vertical-align:middle;
+    }
+
+    .channels {
+      margin-top:10px;
+      display:grid;
+      grid-template-columns:repeat(3, 1fr);
+      gap:10px;
+    }
+
+    .ch {
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,0.08);
+      background:rgba(255,255,255,0.02);
+      padding:8px;
+    }
+
+    .ch h3 {
+      margin:0 0 6px;
+      font-size:12px;
+      color:var(--muted);
+      font-weight:700;
+    }
+
+    .ch canvas {
+      border-radius:8px;
+    }
+
+    .title-row {
+      margin:0 0 8px;
+      font-size:13px;
+      color:var(--muted);
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:8px;
+    }
+
+    .row {
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      align-items:center;
+    }
+
+    .btn {
+      cursor:pointer;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,0.15);
+      background:rgba(255,255,255,0.06);
+      color:var(--text);
+      font-size:13px;
+      padding:8px 10px;
+    }
+
+    .btn:hover {
+      background:rgba(255,255,255,0.12);
+    }
+
+    .btn.primary {
+      background:rgba(121,168,255,0.22);
+      border-color:rgba(121,168,255,0.55);
+    }
+
+    .btn.primary:hover {
+      background:rgba(121,168,255,0.31);
+    }
+
+    .selectrow {
+      display:grid;
+      grid-template-columns:120px 1fr;
+      gap:10px;
+      font-size:13px;
+      align-items:center;
+      margin:9px 0;
+    }
+
+    select, input[type="file"] {
+      width:100%;
+      border-radius:9px;
+      border:1px solid rgba(255,255,255,0.15);
+      background:rgba(255,255,255,0.06);
+      color:var(--text);
+      padding:7px 8px;
+      font-size:13px;
+    }
+
+    .slider {
+      display:grid;
+      grid-template-columns:134px 1fr 82px;
+      gap:10px;
+      align-items:center;
+      margin:10px 0;
+      font-size:13px;
+    }
+
+    input[type="range"] {
+      width:100%;
+      accent-color:#80aeff;
+    }
+
+    .hr {
+      height:1px;
+      margin:12px 0;
+      background:rgba(255,255,255,0.11);
+    }
+
+    .kv {
+      display:grid;
+      grid-template-columns:1fr auto;
+      gap:8px 10px;
+      font-size:13px;
+    }
+
+    .kv div:nth-child(odd) {
+      color:var(--muted);
+    }
+
+    .formula {
+      margin-top:8px;
+      border:1px solid rgba(255,255,255,0.09);
+      border-radius:10px;
+      background:rgba(2,8,20,0.5);
+      padding:8px;
+      font-size:12px;
+      line-height:1.65;
+      color:#d6e2ff;
+    }
+
+    .formula code {
+      font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    .matrix {
+      margin-top:8px;
+      display:grid;
+      grid-template-columns:repeat(5, minmax(0, 1fr));
+      gap:4px;
+    }
+
+    .cell {
+      border-radius:6px;
+      border:1px solid rgba(255,255,255,0.11);
+      min-height:58px;
+      font-size:10px;
+      line-height:1.4;
+      padding:4px;
+      display:flex;
+      align-items:flex-end;
+      justify-content:flex-start;
+      white-space:pre;
+    }
+
+    .detail {
+      margin-top:8px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,0.10);
+      background:rgba(2,8,20,0.56);
+      padding:8px;
+      color:#dce6ff;
+      font-size:12px;
+      white-space:pre-wrap;
+      font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      max-height:180px;
+      overflow:auto;
+    }
+
+    .note {
+      margin-top:8px;
+      font-size:12px;
+      color:var(--muted);
+      line-height:1.6;
+    }
+
+    @media (max-width: 1020px) {
+      .wrap { grid-template-columns:1fr; }
+      .slider { grid-template-columns:114px 1fr 78px; }
+    }
+
+    @media (max-width: 620px) {
+      .channels { grid-template-columns:1fr; }
+      .matrix { grid-template-columns:repeat(3, minmax(0, 1fr)); }
+    }
+  </style>
+</head>
+<body>
+  <div class="top-nav">
+    <a class="top-link" href="index.html">← 新卒AI研修トップへ戻る</a>
+  </div>
+
+  <div class="wrap">
+    <section class="card">
+      <h1>画像は数字の集まり：ピクセルとRGBの可視化ラボ</h1>
+      <p class="sub">
+        画像は <span class="pill">H × W × 3</span> の数値配列として扱えます。
+        1ピクセルは <span class="pill">[R, G, B]</span> の3つの数値で表現され、
+        各値は <span class="pill">0〜255（256段階）</span> です。
+        マウスでピクセルを選択し、拡大表示と数値の対応を確認してください。
+      </p>
+
+      <div class="canvas-wrap">
+        <canvas id="imageCanvas" width="760" height="520"></canvas>
+      </div>
+
+      <div class="legend">
+        <span><span class="dot" style="background:rgba(255,255,255,0.9)"></span>白枠: 選択ピクセル</span>
+        <span><span class="dot" style="background:var(--r)"></span>Rチャンネル</span>
+        <span><span class="dot" style="background:var(--g)"></span>Gチャンネル</span>
+        <span><span class="dot" style="background:var(--b)"></span>Bチャンネル</span>
+      </div>
+
+      <div class="title-row">
+        <span>RGBヒストグラム（画像全体の値分布）</span>
+        <span class="pill" id="histInfo">bins: 0..255</span>
+      </div>
+      <canvas id="histCanvas" width="760" height="210"></canvas>
+
+      <div class="channels">
+        <div class="ch">
+          <h3>Rのみ表示</h3>
+          <canvas id="rCanvas" width="220" height="160"></canvas>
+        </div>
+        <div class="ch">
+          <h3>Gのみ表示</h3>
+          <canvas id="gCanvas" width="220" height="160"></canvas>
+        </div>
+        <div class="ch">
+          <h3>Bのみ表示</h3>
+          <canvas id="bCanvas" width="220" height="160"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="row" style="justify-content:space-between;">
+        <div style="font-weight:700; font-size:14px;">操作パネル</div>
+        <div class="pill" id="modePill">編集: 選択ピクセル</div>
+      </div>
+
+      <div class="selectrow">
+        <div>サンプル画像</div>
+        <select id="sampleSelect">
+          <option value="digit">数字</option>
+          <option value="smiley">にこちゃん</option>
+          <option value="gradient">グラデーション</option>
+          <option value="checker">チェッカー</option>
+          <option value="noise">ノイズ</option>
+        </select>
+      </div>
+
+      <div class="selectrow">
+        <div>画像アップロード</div>
+        <input id="fileInput" type="file" accept="image/*" />
+      </div>
+
+      <div class="row">
+        <button class="btn primary" id="btnGenerate">再生成</button>
+        <button class="btn" id="btnReset">画像を初期化</button>
+        <button class="btn" id="btnClearOverride">ピクセル編集を消去</button>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="slider">
+        <div>解像度 (px)</div>
+        <input id="sizeRange" type="range" min="12" max="96" step="2" value="40" />
+        <div id="sizeVal">40×40</div>
+      </div>
+
+      <div class="slider">
+        <div>拡大範囲</div>
+        <input id="zoomRange" type="range" min="4" max="13" step="1" value="5" />
+        <div id="zoomVal">11×11</div>
+      </div>
+
+      <div class="row" style="margin:6px 0 2px;">
+        <label style="font-size:13px;"><input id="gridCheck" type="checkbox" checked /> グリッド表示</label>
+        <label style="font-size:13px;"><input id="valueCheck" type="checkbox" checked /> 拡大図にRGB値表示</label>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="title-row" style="margin-bottom:4px;">
+        <span>編集モード</span>
+      </div>
+      <div class="row" style="margin-bottom:6px;">
+        <label style="font-size:13px;"><input type="radio" name="editMode" value="pixel" checked /> 選択ピクセルを編集</label>
+        <label style="font-size:13px;"><input type="radio" name="editMode" value="global" /> 画像全体に色を混ぜる</label>
+      </div>
+
+      <div class="slider">
+        <div>R</div>
+        <input id="rRange" type="range" min="0" max="255" step="1" value="128" />
+        <div id="rVal">128</div>
+      </div>
+      <div class="slider">
+        <div>G</div>
+        <input id="gRange" type="range" min="0" max="255" step="1" value="128" />
+        <div id="gVal">128</div>
+      </div>
+      <div class="slider">
+        <div>B</div>
+        <input id="bRange" type="range" min="0" max="255" step="1" value="128" />
+        <div id="bVal">128</div>
+      </div>
+
+      <div class="slider" id="alphaRow">
+        <div>全体ミックス α</div>
+        <input id="alphaRange" type="range" min="0" max="1" step="0.01" value="0.00" />
+        <div id="alphaVal">0.00</div>
+      </div>
+
+      <div class="slider">
+        <div>明るさ β</div>
+        <input id="brightRange" type="range" min="-120" max="120" step="1" value="0" />
+        <div id="brightVal">0</div>
+      </div>
+
+      <div class="slider">
+        <div>コントラスト γ</div>
+        <input id="contrastRange" type="range" min="0.30" max="2.20" step="0.01" value="1.00" />
+        <div id="contrastVal">1.00</div>
+      </div>
+
+      <div class="formula">
+        <code>pixel = [R, G, B]</code><br>
+        <code>RGBの範囲: 0..255（256段階）</code><br>
+        <code>global: c' = (1-α)c + αt</code> （tはスライダ色）<br>
+        <code>post: c'' = clamp((c' - 128) * γ + 128 + β)</code>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="title-row">
+        <span>選択ピクセルの拡大表示</span>
+        <span class="pill" id="zoomPill">座標: (0, 0)</span>
+      </div>
+      <canvas id="zoomCanvas" width="460" height="360"></canvas>
+
+      <div class="hr"></div>
+
+      <div class="kv">
+        <div>座標 (x, y)</div><div id="coordVal">-</div>
+        <div>配列インデックス</div><div id="indexVal">-</div>
+        <div>RGB</div><div id="rgbVal">-</div>
+        <div>Hex</div><div id="hexVal">-</div>
+        <div>正規化 [0,1]</div><div id="normVal">-</div>
+        <div>グレースケール Y</div><div id="grayVal">-</div>
+      </div>
+
+      <div class="detail" id="bitVal">-</div>
+
+      <div class="title-row" style="margin-top:8px;">
+        <span>周辺5×5ピクセル（各セルにRGB値）</span>
+      </div>
+      <div id="matrixGrid" class="matrix"></div>
+
+      <div class="title-row" style="margin-top:10px;">
+        <span>フラット化ベクトルの例（先頭）</span>
+      </div>
+      <div id="vectorPreview" class="detail">-</div>
+
+      <p class="note">
+        学習向けメモ: CNNやViTへ入力するときは、画像をテンソル化して扱います。
+        例: 40×40画像なら <code>40×40×3 = 4,800</code> 個の値です。
+      </p>
+    </section>
+  </div>
+
+  <script>
+  (() => {
+    const imageCanvas = document.getElementById('imageCanvas');
+    const imageCtx = imageCanvas.getContext('2d');
+    const zoomCanvas = document.getElementById('zoomCanvas');
+    const zoomCtx = zoomCanvas.getContext('2d');
+    const histCanvas = document.getElementById('histCanvas');
+    const histCtx = histCanvas.getContext('2d');
+    const rCanvas = document.getElementById('rCanvas');
+    const gCanvas = document.getElementById('gCanvas');
+    const bCanvas = document.getElementById('bCanvas');
+    const rCtx = rCanvas.getContext('2d');
+    const gCtx = gCanvas.getContext('2d');
+    const bCtx = bCanvas.getContext('2d');
+
+    const sampleSelect = document.getElementById('sampleSelect');
+    const fileInput = document.getElementById('fileInput');
+    const sizeRange = document.getElementById('sizeRange');
+    const zoomRange = document.getElementById('zoomRange');
+    const gridCheck = document.getElementById('gridCheck');
+    const valueCheck = document.getElementById('valueCheck');
+    const rRange = document.getElementById('rRange');
+    const gRange = document.getElementById('gRange');
+    const bRange = document.getElementById('bRange');
+    const alphaRange = document.getElementById('alphaRange');
+    const brightRange = document.getElementById('brightRange');
+    const contrastRange = document.getElementById('contrastRange');
+    const alphaRow = document.getElementById('alphaRow');
+
+    const offscreen = document.createElement('canvas');
+    const offCtx = offscreen.getContext('2d');
+
+    const state = {
+      width: parseInt(sizeRange.value, 10),
+      height: parseInt(sizeRange.value, 10),
+      sourceData: null,
+      finalData: null,
+      selectedX: 0,
+      selectedY: 0,
+      uploadedImage: null,
+      pixelOverrides: new Map(),
+      mode: 'pixel',
+      globalTint: { r: 128, g: 128, b: 128, alpha: 0 },
+      zoomLayout: null
+    };
+
+    function clamp(v, lo, hi) {
+      return Math.min(hi, Math.max(lo, v));
+    }
+
+    function hex2(v) {
+      return v.toString(16).padStart(2, '0').toUpperCase();
+    }
+
+    function toBinary(v) {
+      return v.toString(2).padStart(8, '0');
+    }
+
+    function idxOf(x, y, w) {
+      return (y * w + x) * 4;
+    }
+
+    function readPixel(arr, w, x, y) {
+      const i = idxOf(x, y, w);
+      return { r: arr[i], g: arr[i + 1], b: arr[i + 2] };
+    }
+
+    function writePixel(arr, w, x, y, r, g, b) {
+      const i = idxOf(x, y, w);
+      arr[i] = r;
+      arr[i + 1] = g;
+      arr[i + 2] = b;
+      arr[i + 3] = 255;
+    }
+
+    function fitCoverDraw(img, w, h) {
+      const tmp = document.createElement('canvas');
+      tmp.width = w;
+      tmp.height = h;
+      const tctx = tmp.getContext('2d');
+      const scale = Math.max(w / img.width, h / img.height);
+      const dw = img.width * scale;
+      const dh = img.height * scale;
+      const ox = (w - dw) / 2;
+      const oy = (h - dh) / 2;
+      tctx.imageSmoothingEnabled = true;
+      tctx.drawImage(img, ox, oy, dw, dh);
+      return tctx.getImageData(0, 0, w, h).data;
+    }
+
+    function generateSampleData(type, w, h) {
+      const arr = new Uint8ClampedArray(w * h * 4);
+
+      if (type === 'noise') {
+        for (let y = 0; y < h; y += 1) {
+          for (let x = 0; x < w; x += 1) {
+            const r = Math.floor(Math.random() * 256);
+            const g = Math.floor(Math.random() * 256);
+            const b = Math.floor(Math.random() * 256);
+            writePixel(arr, w, x, y, r, g, b);
+          }
+        }
+        return arr;
+      }
+
+      if (type === 'checker') {
+        const cell = Math.max(2, Math.floor(w / 8));
+        for (let y = 0; y < h; y += 1) {
+          for (let x = 0; x < w; x += 1) {
+            const p = (Math.floor(x / cell) + Math.floor(y / cell)) % 2 === 0;
+            const r = p ? 35 : 235;
+            const g = p ? 120 : 235;
+            const b = p ? 235 : 60;
+            writePixel(arr, w, x, y, r, g, b);
+          }
+        }
+        return arr;
+      }
+
+      if (type === 'gradient') {
+        for (let y = 0; y < h; y += 1) {
+          for (let x = 0; x < w; x += 1) {
+            const nx = x / Math.max(1, w - 1);
+            const ny = y / Math.max(1, h - 1);
+            const r = Math.round(255 * nx);
+            const g = Math.round(255 * ny);
+            const b = Math.round(255 * (0.5 + 0.5 * Math.sin((x + y) * 0.32)));
+            writePixel(arr, w, x, y, r, g, b);
+          }
+        }
+        return arr;
+      }
+
+      offscreen.width = w;
+      offscreen.height = h;
+      offCtx.clearRect(0, 0, w, h);
+      offCtx.fillStyle = '#041020';
+      offCtx.fillRect(0, 0, w, h);
+
+      if (type === 'smiley') {
+        const cx = w * 0.5;
+        const cy = h * 0.5;
+        const rad = w * 0.34;
+        offCtx.fillStyle = '#f7cf4d';
+        offCtx.beginPath();
+        offCtx.arc(cx, cy, rad, 0, Math.PI * 2);
+        offCtx.fill();
+        offCtx.fillStyle = '#1a1a1a';
+        offCtx.beginPath();
+        offCtx.arc(cx - w * 0.11, cy - h * 0.08, w * 0.05, 0, Math.PI * 2);
+        offCtx.arc(cx + w * 0.11, cy - h * 0.08, w * 0.05, 0, Math.PI * 2);
+        offCtx.fill();
+        offCtx.strokeStyle = '#1a1a1a';
+        offCtx.lineWidth = Math.max(1.5, w * 0.04);
+        offCtx.beginPath();
+        offCtx.arc(cx, cy + h * 0.03, w * 0.16, 0.1 * Math.PI, 0.9 * Math.PI);
+        offCtx.stroke();
+      } else {
+        offCtx.fillStyle = '#122a57';
+        offCtx.fillRect(0, 0, w, h);
+        offCtx.fillStyle = '#f6f9ff';
+        offCtx.textAlign = 'center';
+        offCtx.textBaseline = 'middle';
+        offCtx.font = `bold ${Math.floor(w * 0.84)}px sans-serif`;
+        offCtx.fillText('7', w * 0.52, h * 0.54);
+      }
+      return new Uint8ClampedArray(offCtx.getImageData(0, 0, w, h).data);
+    }
+
+    function regenerateSource() {
+      state.width = parseInt(sizeRange.value, 10);
+      state.height = state.width;
+      const t = sampleSelect.value;
+
+      let src;
+      if (state.uploadedImage) {
+        src = new Uint8ClampedArray(fitCoverDraw(state.uploadedImage, state.width, state.height));
+      } else {
+        src = generateSampleData(t, state.width, state.height);
+      }
+      state.sourceData = src;
+      state.pixelOverrides.clear();
+      state.selectedX = Math.floor(state.width * 0.5);
+      state.selectedY = Math.floor(state.height * 0.5);
+      renderAll();
+      syncPixelSlidersToSelected();
+    }
+
+    function applyTransforms() {
+      const src = state.sourceData;
+      if (!src) return;
+
+      const out = new Uint8ClampedArray(src.length);
+      const w = state.width;
+      const h = state.height;
+      const alpha = state.globalTint.alpha;
+      const tr = state.globalTint.r;
+      const tg = state.globalTint.g;
+      const tb = state.globalTint.b;
+      const beta = parseInt(brightRange.value, 10);
+      const gamma = parseFloat(contrastRange.value);
+
+      let pi = 0;
+      for (let y = 0; y < h; y += 1) {
+        for (let x = 0; x < w; x += 1) {
+          const r0 = src[pi];
+          const g0 = src[pi + 1];
+          const b0 = src[pi + 2];
+
+          let r = r0 * (1 - alpha) + tr * alpha;
+          let g = g0 * (1 - alpha) + tg * alpha;
+          let b = b0 * (1 - alpha) + tb * alpha;
+
+          r = (r - 128) * gamma + 128 + beta;
+          g = (g - 128) * gamma + 128 + beta;
+          b = (b - 128) * gamma + 128 + beta;
+
+          const key = y * w + x;
+          const ov = state.pixelOverrides.get(key);
+          if (ov) {
+            r = ov.r;
+            g = ov.g;
+            b = ov.b;
+          }
+
+          out[pi] = clamp(Math.round(r), 0, 255);
+          out[pi + 1] = clamp(Math.round(g), 0, 255);
+          out[pi + 2] = clamp(Math.round(b), 0, 255);
+          out[pi + 3] = 255;
+          pi += 4;
+        }
+      }
+      state.finalData = out;
+    }
+
+    function drawScaledToCanvas(ctx, canvas, data, w, h, channelMode) {
+      offscreen.width = w;
+      offscreen.height = h;
+      const d = new Uint8ClampedArray(data.length);
+      for (let i = 0; i < data.length; i += 4) {
+        if (channelMode === 'r') {
+          d[i] = data[i];
+          d[i + 1] = 0;
+          d[i + 2] = 0;
+        } else if (channelMode === 'g') {
+          d[i] = 0;
+          d[i + 1] = data[i + 1];
+          d[i + 2] = 0;
+        } else if (channelMode === 'b') {
+          d[i] = 0;
+          d[i + 1] = 0;
+          d[i + 2] = data[i + 2];
+        } else {
+          d[i] = data[i];
+          d[i + 1] = data[i + 1];
+          d[i + 2] = data[i + 2];
+        }
+        d[i + 3] = 255;
+      }
+      offCtx.putImageData(new ImageData(d, w, h), 0, 0);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(offscreen, 0, 0, canvas.width, canvas.height);
+    }
+
+    function drawMain() {
+      if (!state.finalData) return;
+      const w = state.width;
+      const h = state.height;
+      drawScaledToCanvas(imageCtx, imageCanvas, state.finalData, w, h, 'all');
+
+      const cellW = imageCanvas.width / w;
+      const cellH = imageCanvas.height / h;
+
+      if (gridCheck.checked && w <= 96) {
+        imageCtx.strokeStyle = 'rgba(255,255,255,0.17)';
+        imageCtx.lineWidth = 1;
+        for (let x = 0; x <= w; x += 1) {
+          const px = x * cellW;
+          imageCtx.beginPath();
+          imageCtx.moveTo(px, 0);
+          imageCtx.lineTo(px, imageCanvas.height);
+          imageCtx.stroke();
+        }
+        for (let y = 0; y <= h; y += 1) {
+          const py = y * cellH;
+          imageCtx.beginPath();
+          imageCtx.moveTo(0, py);
+          imageCtx.lineTo(imageCanvas.width, py);
+          imageCtx.stroke();
+        }
+      }
+
+      imageCtx.strokeStyle = 'rgba(255,255,255,0.95)';
+      imageCtx.lineWidth = 2.4;
+      imageCtx.strokeRect(
+        state.selectedX * cellW + 1,
+        state.selectedY * cellH + 1,
+        Math.max(2, cellW - 2),
+        Math.max(2, cellH - 2)
+      );
+    }
+
+    function drawZoom() {
+      if (!state.finalData) return;
+      const radius = parseInt(zoomRange.value, 10);
+      const region = radius * 2 + 1;
+      const w = state.width;
+      const h = state.height;
+
+      zoomCtx.clearRect(0, 0, zoomCanvas.width, zoomCanvas.height);
+      zoomCtx.fillStyle = 'rgba(2,8,20,0.8)';
+      zoomCtx.fillRect(0, 0, zoomCanvas.width, zoomCanvas.height);
+
+      const cell = Math.floor(Math.min(zoomCanvas.width, zoomCanvas.height) / region);
+      const drawW = cell * region;
+      const drawH = cell * region;
+      const ox = Math.floor((zoomCanvas.width - drawW) * 0.5);
+      const oy = Math.floor((zoomCanvas.height - drawH) * 0.5);
+      const startX = state.selectedX - radius;
+      const startY = state.selectedY - radius;
+
+      for (let gy = 0; gy < region; gy += 1) {
+        for (let gx = 0; gx < region; gx += 1) {
+          const x = startX + gx;
+          const y = startY + gy;
+          const px = ox + gx * cell;
+          const py = oy + gy * cell;
+
+          if (x < 0 || x >= w || y < 0 || y >= h) {
+            zoomCtx.fillStyle = 'rgba(255,255,255,0.05)';
+            zoomCtx.fillRect(px, py, cell, cell);
+            continue;
+          }
+          const p = readPixel(state.finalData, w, x, y);
+          zoomCtx.fillStyle = `rgb(${p.r},${p.g},${p.b})`;
+          zoomCtx.fillRect(px, py, cell, cell);
+
+          if (valueCheck.checked && cell >= 24) {
+            const luma = 0.299 * p.r + 0.587 * p.g + 0.114 * p.b;
+            zoomCtx.fillStyle = luma > 130 ? 'rgba(0,0,0,0.78)' : 'rgba(255,255,255,0.9)';
+            const lineH = Math.max(8, Math.floor((cell - 2) / 3));
+            const fontSize = Math.max(8, lineH - 1);
+            const startY = py + Math.max(0, Math.floor((cell - lineH * 3) * 0.5));
+            zoomCtx.font = `700 ${fontSize}px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace`;
+            zoomCtx.textBaseline = 'top';
+            zoomCtx.fillText(`${p.r}`, px + 2, startY);
+            zoomCtx.fillText(`${p.g}`, px + 2, startY + lineH);
+            zoomCtx.fillText(`${p.b}`, px + 2, startY + lineH * 2);
+            zoomCtx.textBaseline = 'alphabetic';
+          }
+        }
+      }
+
+      if (gridCheck.checked) {
+        zoomCtx.strokeStyle = 'rgba(255,255,255,0.25)';
+        zoomCtx.lineWidth = 1;
+        for (let i = 0; i <= region; i += 1) {
+          const x = ox + i * cell;
+          zoomCtx.beginPath();
+          zoomCtx.moveTo(x, oy);
+          zoomCtx.lineTo(x, oy + drawH);
+          zoomCtx.stroke();
+        }
+        for (let i = 0; i <= region; i += 1) {
+          const y = oy + i * cell;
+          zoomCtx.beginPath();
+          zoomCtx.moveTo(ox, y);
+          zoomCtx.lineTo(ox + drawW, y);
+          zoomCtx.stroke();
+        }
+      }
+
+      const center = radius;
+      zoomCtx.strokeStyle = 'rgba(255,255,255,0.96)';
+      zoomCtx.lineWidth = 3;
+      zoomCtx.strokeRect(ox + center * cell + 1, oy + center * cell + 1, Math.max(2, cell - 2), Math.max(2, cell - 2));
+
+      state.zoomLayout = { ox, oy, cell, region, startX, startY, drawW, drawH };
+    }
+
+    function drawHistogram() {
+      if (!state.finalData) return;
+      const binsR = new Array(256).fill(0);
+      const binsG = new Array(256).fill(0);
+      const binsB = new Array(256).fill(0);
+
+      for (let i = 0; i < state.finalData.length; i += 4) {
+        binsR[state.finalData[i]] += 1;
+        binsG[state.finalData[i + 1]] += 1;
+        binsB[state.finalData[i + 2]] += 1;
+      }
+
+      histCtx.clearRect(0, 0, histCanvas.width, histCanvas.height);
+      histCtx.fillStyle = 'rgba(2,8,20,0.7)';
+      histCtx.fillRect(0, 0, histCanvas.width, histCanvas.height);
+
+      const pad = 30;
+      const w = histCanvas.width - 2 * pad;
+      const h = histCanvas.height - 2 * pad;
+      const maxV = Math.max(...binsR, ...binsG, ...binsB, 1);
+
+      histCtx.strokeStyle = 'rgba(255,255,255,0.16)';
+      histCtx.lineWidth = 1;
+      for (let i = 0; i <= 4; i += 1) {
+        const y = pad + (i * h) / 4;
+        histCtx.beginPath();
+        histCtx.moveTo(pad, y);
+        histCtx.lineTo(pad + w, y);
+        histCtx.stroke();
+      }
+
+      function drawLine(bins, color) {
+        histCtx.strokeStyle = color;
+        histCtx.lineWidth = 1.9;
+        histCtx.beginPath();
+        for (let i = 0; i < 256; i += 1) {
+          const x = pad + (i / 255) * w;
+          const y = pad + h - (bins[i] / maxV) * h;
+          if (i === 0) histCtx.moveTo(x, y);
+          else histCtx.lineTo(x, y);
+        }
+        histCtx.stroke();
+      }
+
+      drawLine(binsR, 'rgba(255,122,122,0.95)');
+      drawLine(binsG, 'rgba(125,255,159,0.95)');
+      drawLine(binsB, 'rgba(127,178,255,0.96)');
+
+      histCtx.fillStyle = 'rgba(229,238,255,0.9)';
+      histCtx.font = '11px "Hiragino Sans", sans-serif';
+      histCtx.fillText('0', pad - 6, histCanvas.height - 10);
+      histCtx.fillText('255', histCanvas.width - pad - 18, histCanvas.height - 10);
+      histCtx.fillText(`max count: ${maxV}`, pad + 6, 16);
+    }
+
+    function drawChannels() {
+      if (!state.finalData) return;
+      drawScaledToCanvas(rCtx, rCanvas, state.finalData, state.width, state.height, 'r');
+      drawScaledToCanvas(gCtx, gCanvas, state.finalData, state.width, state.height, 'g');
+      drawScaledToCanvas(bCtx, bCanvas, state.finalData, state.width, state.height, 'b');
+    }
+
+    function updateInfo() {
+      const p = readPixel(state.finalData, state.width, state.selectedX, state.selectedY);
+      const idx = state.selectedY * state.width + state.selectedX;
+      const hex = `#${hex2(p.r)}${hex2(p.g)}${hex2(p.b)}`;
+      const gray = Math.round(0.299 * p.r + 0.587 * p.g + 0.114 * p.b);
+
+      document.getElementById('coordVal').textContent = `(${state.selectedX}, ${state.selectedY})`;
+      document.getElementById('indexVal').textContent = `${idx}`;
+      document.getElementById('rgbVal').textContent = `[${p.r}, ${p.g}, ${p.b}]`;
+      document.getElementById('hexVal').textContent = hex;
+      document.getElementById('normVal').textContent = `[${(p.r / 255).toFixed(4)}, ${(p.g / 255).toFixed(4)}, ${(p.b / 255).toFixed(4)}]`;
+      document.getElementById('grayVal').textContent = `${gray}`;
+      document.getElementById('zoomPill').textContent = `座標: (${state.selectedX}, ${state.selectedY})`;
+
+      document.getElementById('bitVal').textContent =
+        `R: ${p.r} -> ${toBinary(p.r)}\n` +
+        `G: ${p.g} -> ${toBinary(p.g)}\n` +
+        `B: ${p.b} -> ${toBinary(p.b)}\n` +
+        `1ピクセルの入力ベクトル: [${p.r}, ${p.g}, ${p.b}]`;
+    }
+
+    function updateMatrix() {
+      const root = document.getElementById('matrixGrid');
+      root.innerHTML = '';
+      const radius = 2;
+      for (let dy = -radius; dy <= radius; dy += 1) {
+        for (let dx = -radius; dx <= radius; dx += 1) {
+          const x = clamp(state.selectedX + dx, 0, state.width - 1);
+          const y = clamp(state.selectedY + dy, 0, state.height - 1);
+          const p = readPixel(state.finalData, state.width, x, y);
+          const luma = 0.299 * p.r + 0.587 * p.g + 0.114 * p.b;
+          const txt = luma > 130 ? '#111' : '#f2f6ff';
+          const div = document.createElement('div');
+          div.className = 'cell';
+          div.style.background = `rgb(${p.r}, ${p.g}, ${p.b})`;
+          div.style.color = txt;
+          div.textContent = `${p.r},${p.g},${p.b}`;
+          root.appendChild(div);
+        }
+      }
+    }
+
+    function updateVectorPreview() {
+      const out = [];
+      const total = state.width * state.height;
+      const show = Math.min(24, total);
+      for (let i = 0; i < show; i += 1) {
+        const x = i % state.width;
+        const y = Math.floor(i / state.width);
+        const p = readPixel(state.finalData, state.width, x, y);
+        out.push(`p${String(i).padStart(2, '0')}=[${p.r},${p.g},${p.b}]`);
+      }
+      document.getElementById('vectorPreview').textContent = out.join('  ');
+    }
+
+    function setSliderLabels() {
+      document.getElementById('sizeVal').textContent = `${state.width}×${state.height}`;
+      const rad = parseInt(zoomRange.value, 10);
+      document.getElementById('zoomVal').textContent = `${rad * 2 + 1}×${rad * 2 + 1}`;
+      document.getElementById('rVal').textContent = `${rRange.value}`;
+      document.getElementById('gVal').textContent = `${gRange.value}`;
+      document.getElementById('bVal').textContent = `${bRange.value}`;
+      document.getElementById('alphaVal').textContent = `${parseFloat(alphaRange.value).toFixed(2)}`;
+      document.getElementById('brightVal').textContent = `${brightRange.value}`;
+      document.getElementById('contrastVal').textContent = `${parseFloat(contrastRange.value).toFixed(2)}`;
+      document.getElementById('modePill').textContent = state.mode === 'pixel' ? '編集: 選択ピクセル' : '編集: 画像全体ミックス';
+    }
+
+    function renderAll() {
+      if (!state.sourceData) return;
+      applyTransforms();
+      drawMain();
+      drawZoom();
+      drawHistogram();
+      drawChannels();
+      updateInfo();
+      updateMatrix();
+      updateVectorPreview();
+      setSliderLabels();
+    }
+
+    function syncPixelSlidersToSelected() {
+      if (!state.finalData || state.mode !== 'pixel') return;
+      const p = readPixel(state.finalData, state.width, state.selectedX, state.selectedY);
+      rRange.value = String(p.r);
+      gRange.value = String(p.g);
+      bRange.value = String(p.b);
+      setSliderLabels();
+    }
+
+    function updateModeUI() {
+      alphaRow.style.opacity = state.mode === 'global' ? '1' : '0.45';
+      alphaRange.disabled = state.mode !== 'global';
+      if (state.mode === 'global') {
+        rRange.value = String(state.globalTint.r);
+        gRange.value = String(state.globalTint.g);
+        bRange.value = String(state.globalTint.b);
+        alphaRange.value = String(state.globalTint.alpha.toFixed(2));
+      } else {
+        syncPixelSlidersToSelected();
+      }
+      setSliderLabels();
+    }
+
+    function commitSliderChange() {
+      if (state.mode === 'global') {
+        state.globalTint.r = parseInt(rRange.value, 10);
+        state.globalTint.g = parseInt(gRange.value, 10);
+        state.globalTint.b = parseInt(bRange.value, 10);
+        state.globalTint.alpha = parseFloat(alphaRange.value);
+      } else {
+        const key = state.selectedY * state.width + state.selectedX;
+        state.pixelOverrides.set(key, {
+          r: parseInt(rRange.value, 10),
+          g: parseInt(gRange.value, 10),
+          b: parseInt(bRange.value, 10)
+        });
+      }
+      renderAll();
+    }
+
+    function canvasPosToPixel(canvas, ev) {
+      const rect = canvas.getBoundingClientRect();
+      const x = (ev.clientX - rect.left) * (canvas.width / rect.width);
+      const y = (ev.clientY - rect.top) * (canvas.height / rect.height);
+      const px = clamp(Math.floor((x / canvas.width) * state.width), 0, state.width - 1);
+      const py = clamp(Math.floor((y / canvas.height) * state.height), 0, state.height - 1);
+      return { px, py };
+    }
+
+    function selectPixel(x, y) {
+      state.selectedX = clamp(x, 0, state.width - 1);
+      state.selectedY = clamp(y, 0, state.height - 1);
+      renderAll();
+      syncPixelSlidersToSelected();
+    }
+
+    function onZoomPointer(ev) {
+      if (!state.zoomLayout) return;
+      const rect = zoomCanvas.getBoundingClientRect();
+      const lx = (ev.clientX - rect.left) * (zoomCanvas.width / rect.width);
+      const ly = (ev.clientY - rect.top) * (zoomCanvas.height / rect.height);
+      const z = state.zoomLayout;
+
+      if (lx < z.ox || lx >= z.ox + z.drawW || ly < z.oy || ly >= z.oy + z.drawH) return;
+      const gx = Math.floor((lx - z.ox) / z.cell);
+      const gy = Math.floor((ly - z.oy) / z.cell);
+      const x = z.startX + gx;
+      const y = z.startY + gy;
+      if (x < 0 || x >= state.width || y < 0 || y >= state.height) return;
+      selectPixel(x, y);
+    }
+
+    function clearAllEdits() {
+      state.pixelOverrides.clear();
+      state.globalTint = { r: 128, g: 128, b: 128, alpha: 0 };
+      brightRange.value = '0';
+      contrastRange.value = '1.00';
+      if (state.mode === 'global') {
+        rRange.value = '128';
+        gRange.value = '128';
+        bRange.value = '128';
+        alphaRange.value = '0';
+      }
+      renderAll();
+    }
+
+    document.getElementById('btnGenerate').addEventListener('click', () => {
+      state.uploadedImage = null;
+      regenerateSource();
+    });
+
+    document.getElementById('btnReset').addEventListener('click', () => {
+      regenerateSource();
+    });
+
+    document.getElementById('btnClearOverride').addEventListener('click', () => {
+      clearAllEdits();
+    });
+
+    sampleSelect.addEventListener('change', () => {
+      state.uploadedImage = null;
+      regenerateSource();
+    });
+
+    sizeRange.addEventListener('input', () => {
+      regenerateSource();
+    });
+
+    zoomRange.addEventListener('input', () => {
+      renderAll();
+    });
+
+    gridCheck.addEventListener('input', renderAll);
+    valueCheck.addEventListener('input', renderAll);
+
+    rRange.addEventListener('input', commitSliderChange);
+    gRange.addEventListener('input', commitSliderChange);
+    bRange.addEventListener('input', commitSliderChange);
+    alphaRange.addEventListener('input', commitSliderChange);
+    brightRange.addEventListener('input', renderAll);
+    contrastRange.addEventListener('input', renderAll);
+
+    for (const r of document.querySelectorAll('input[name="editMode"]')) {
+      r.addEventListener('change', (ev) => {
+        state.mode = ev.target.value;
+        updateModeUI();
+        renderAll();
+      });
+    }
+
+    imageCanvas.addEventListener('mousemove', (ev) => {
+      const p = canvasPosToPixel(imageCanvas, ev);
+      selectPixel(p.px, p.py);
+    });
+    imageCanvas.addEventListener('click', (ev) => {
+      const p = canvasPosToPixel(imageCanvas, ev);
+      selectPixel(p.px, p.py);
+    });
+    zoomCanvas.addEventListener('mousemove', onZoomPointer);
+    zoomCanvas.addEventListener('click', onZoomPointer);
+
+    fileInput.addEventListener('change', () => {
+      const file = fileInput.files && fileInput.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          state.uploadedImage = img;
+          regenerateSource();
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    regenerateSource();
+    updateModeUI();
+  })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,1022 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>GMM (EM法) クラスタリングシミュレータ</title>
+  <style>
+    :root {
+      --bg:#081326;
+      --panel:#0f1f3e;
+      --text:#e9efff;
+      --muted:#aab8de;
+      --line:#2b406e;
+      --warn:#ffd06b;
+      --good:#67d79a;
+      --bad:#ff8787;
+      --accent:#73a7ff;
+    }
+
+    * { box-sizing:border-box; }
+
+    body {
+      margin:0;
+      min-height:100vh;
+      color:var(--text);
+      font-family:"Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif;
+      background:
+        radial-gradient(circle at 12% 14%, rgba(115,167,255,0.17), transparent 34%),
+        radial-gradient(circle at 88% 10%, rgba(111,223,167,0.16), transparent 28%),
+        linear-gradient(180deg, #060f1d, var(--bg));
+    }
+
+    .top-nav {
+      max-width:1220px;
+      margin:14px auto 0;
+      padding:0 18px;
+      display:flex;
+      gap:14px;
+      flex-wrap:wrap;
+    }
+
+    .top-link {
+      color:var(--muted);
+      text-decoration:none;
+      font-size:13px;
+    }
+
+    .top-link:hover {
+      color:var(--text);
+      text-decoration:underline;
+    }
+
+    .wrap {
+      max-width:1220px;
+      margin:0 auto;
+      padding:16px 18px 24px;
+      display:grid;
+      grid-template-columns:1.22fr 0.78fr;
+      gap:16px;
+    }
+
+    .card {
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,0.09);
+      background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+      padding:14px;
+      box-shadow:0 15px 32px rgba(0,0,0,0.35);
+    }
+
+    h1 {
+      margin:0 0 8px;
+      font-size:19px;
+      line-height:1.35;
+    }
+
+    .sub {
+      margin:0;
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.65;
+    }
+
+    .pill {
+      display:inline-block;
+      padding:2px 8px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,0.13);
+      background:rgba(255,255,255,0.05);
+      color:var(--muted);
+      font-size:12px;
+    }
+
+    .formula {
+      margin-top:10px;
+      border-radius:9px;
+      border:1px solid rgba(255,255,255,0.1);
+      background:rgba(8,16,32,0.52);
+      padding:9px;
+      color:#dce5ff;
+      font-size:12px;
+      line-height:1.6;
+      font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      white-space:pre-wrap;
+    }
+
+    .desc {
+      margin-top:10px;
+      border-radius:9px;
+      border:1px solid rgba(255,255,255,0.1);
+      background:rgba(255,255,255,0.03);
+      padding:9px;
+      font-size:12px;
+      line-height:1.6;
+      color:#d4deff;
+    }
+
+    canvas {
+      width:100%;
+      height:auto;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,0.09);
+      background:rgba(4,10,24,0.45);
+    }
+
+    .legend {
+      margin-top:9px;
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      font-size:12px;
+      color:var(--muted);
+    }
+
+    .dot {
+      display:inline-block;
+      width:10px;
+      height:10px;
+      border-radius:50%;
+      margin-right:6px;
+      vertical-align:middle;
+    }
+
+    .mini-title {
+      margin:12px 0 7px;
+      font-size:13px;
+      color:var(--muted);
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+    }
+
+    .row {
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      align-items:center;
+    }
+
+    button {
+      cursor:pointer;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,0.16);
+      background:rgba(255,255,255,0.06);
+      color:var(--text);
+      font-size:13px;
+      padding:8px 10px;
+      transition:background .2s ease;
+    }
+
+    button:hover { background:rgba(255,255,255,0.11); }
+
+    button.primary {
+      border-color:rgba(115,167,255,0.58);
+      background:rgba(115,167,255,0.21);
+    }
+
+    button.primary:hover { background:rgba(115,167,255,0.28); }
+
+    .selectrow {
+      display:grid;
+      grid-template-columns:120px 1fr;
+      gap:10px;
+      margin:8px 0;
+      align-items:center;
+      font-size:13px;
+    }
+
+    select {
+      width:100%;
+      border-radius:9px;
+      border:1px solid rgba(255,255,255,0.15);
+      background:rgba(255,255,255,0.06);
+      color:var(--text);
+      padding:7px 8px;
+      font-size:13px;
+    }
+
+    .slider {
+      margin:10px 0;
+      display:grid;
+      grid-template-columns:140px 1fr 84px;
+      gap:10px;
+      align-items:center;
+      font-size:13px;
+    }
+
+    input[type="range"] { width:100%; accent-color:#75a8ff; }
+
+    .hr {
+      height:1px;
+      margin:12px 0;
+      background:rgba(255,255,255,0.11);
+    }
+
+    .kv {
+      display:grid;
+      grid-template-columns:1fr auto;
+      gap:8px 10px;
+      font-size:13px;
+    }
+
+    .kv div:nth-child(odd) { color:var(--muted); }
+
+    .status {
+      margin-top:8px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,0.1);
+      background:rgba(0,0,0,0.2);
+      padding:10px;
+      font-size:13px;
+      line-height:1.55;
+    }
+
+    .status.good {
+      border-color:rgba(103,215,154,0.52);
+      background:rgba(103,215,154,0.12);
+    }
+
+    .status.warn {
+      border-color:rgba(255,208,107,0.52);
+      background:rgba(255,208,107,0.12);
+    }
+
+    .detail {
+      margin-top:8px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,0.09);
+      background:rgba(2,8,20,0.55);
+      padding:8px;
+      color:#d8e2ff;
+      font-size:12px;
+      font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      white-space:pre-wrap;
+      max-height:170px;
+      overflow:auto;
+    }
+
+    @media (max-width: 990px) {
+      .wrap { grid-template-columns:1fr; }
+      .slider { grid-template-columns:112px 1fr 84px; }
+      .selectrow { grid-template-columns:100px 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="top-nav">
+    <a class="top-link" href="clustering-hub.html">← クラスタリングハブへ戻る</a>
+    <a class="top-link" href="index.html">研修トップへ戻る</a>
+  </div>
+
+  <div class="wrap">
+    <section class="card">
+      <h1>GMM (EM法) クラスタリングシミュレータ</h1>
+      <p class="sub">
+        Gaussian Mixture Model は「複数ガウス分布の重ね合わせ」でデータを表現します。
+        EM法で責務（responsibility）と分布パラメータを交互に更新します。
+      </p>
+
+      <div class="formula">混合分布
+p(x) = Σ_k π_k N(x | μ_k, Σ_k), Σ_k π_k = 1
+
+E-step
+r_nk = π_k N(x_n|μ_k,Σ_k) / Σ_j π_j N(x_n|μ_j,Σ_j)
+
+M-step
+N_k = Σ_n r_nk
+μ_k = (1/N_k) Σ_n r_nk x_n
+Σ_k = (1/N_k) Σ_n r_nk (x_n-μ_k)(x_n-μ_k)^T
+π_k = N_k / N</div>
+
+      <div class="desc">
+        <b>パラメータ説明</b><br>
+        `K` は混合成分数、`分散下限` は数値安定化のための最小分散です。
+        `ノイズσ` を上げると成分が重なりやすく、`K` が大きすぎると過分割しやすくなります。
+      </div>
+
+      <canvas id="plot" width="860" height="510"></canvas>
+
+      <div class="legend" id="legend"></div>
+
+      <div class="mini-title">
+        <span>対数尤度の推移</span>
+        <span class="pill" id="modePill">モード: 学習中</span>
+      </div>
+      <canvas id="llPlot" width="860" height="190"></canvas>
+    </section>
+
+    <section class="card">
+      <div class="row" style="justify-content:space-between;">
+        <div style="font-size:14px; font-weight:700;">操作パネル</div>
+        <div class="pill" id="statePill">状態: 計算中</div>
+      </div>
+
+      <div class="row" style="margin-top:10px;">
+        <button class="primary" id="btnPlay">再生</button>
+        <button id="btnPause">停止</button>
+        <button id="btnStep">1ステップ</button>
+        <button id="btnReset">モデル初期化</button>
+        <button id="btnNew">データ再生成</button>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="selectrow">
+        <div>データ形状</div>
+        <select id="datasetType">
+          <option value="blobs">ガウス塊</option>
+          <option value="rings">同心円</option>
+          <option value="moons">2つの月</option>
+        </select>
+      </div>
+
+      <div class="slider">
+        <div>K（成分数）</div>
+        <input id="kRange" type="range" min="2" max="8" step="1" value="3" />
+        <div id="kVal">3</div>
+      </div>
+
+      <div class="slider">
+        <div>更新/秒</div>
+        <input id="speedRange" type="range" min="1" max="30" step="1" value="6" />
+        <div id="speedVal">6</div>
+      </div>
+
+      <div class="slider">
+        <div>点の数</div>
+        <input id="countRange" type="range" min="24" max="260" step="4" value="120" />
+        <div id="countVal">120</div>
+      </div>
+
+      <div class="slider">
+        <div>生成クラスタ数</div>
+        <input id="trueKRange" type="range" min="2" max="8" step="1" value="3" />
+        <div id="trueKVal">3</div>
+      </div>
+
+      <div class="slider">
+        <div>クラス間隔</div>
+        <input id="sepRange" type="range" min="0.6" max="3.8" step="0.1" value="2.2" />
+        <div id="sepVal">2.2</div>
+      </div>
+
+      <div class="slider">
+        <div>ノイズ σ</div>
+        <input id="noiseRange" type="range" min="0.03" max="1.20" step="0.01" value="0.30" />
+        <div id="noiseVal">0.30</div>
+      </div>
+
+      <div class="slider">
+        <div>分散下限</div>
+        <input id="varFloorRange" type="range" min="0.001" max="0.200" step="0.001" value="0.020" />
+        <div id="varFloorVal">0.020</div>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="kv">
+        <div>EMステップ</div><div id="stepVal">0</div>
+        <div>対数尤度 log L</div><div id="llVal">-</div>
+        <div>Δlog L</div><div id="dllVal">-</div>
+        <div>平均責務エントロピー</div><div id="entVal">-</div>
+        <div>平均μ移動量</div><div id="moveVal">-</div>
+        <div>有効成分数 (π&gt;0.03)</div><div id="effVal">-</div>
+      </div>
+
+      <div id="statusBox" class="status">評価: 初期化中...</div>
+      <div class="detail" id="detailBox">-</div>
+    </section>
+  </div>
+
+  <script>
+  (() => {
+    function randn() {
+      let u = 0;
+      let v = 0;
+      while (u === 0) u = Math.random();
+      while (v === 0) v = Math.random();
+      return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+    }
+
+    function clamp(v, lo, hi) {
+      return Math.min(hi, Math.max(lo, v));
+    }
+
+    const palette = [
+      [115, 167, 255],
+      [255, 125, 125],
+      [126, 226, 168],
+      [255, 211, 109],
+      [213, 155, 255],
+      [135, 220, 255],
+      [255, 168, 107],
+      [145, 161, 255]
+    ];
+
+    function colorOf(id, alpha) {
+      const c = palette[id % palette.length];
+      return `rgba(${c[0]},${c[1]},${c[2]},${alpha})`;
+    }
+
+    function generateData(type, count, sep, noise, trueK) {
+      const points = [];
+      for (let i = 0; i < count; i += 1) {
+        const group = i % trueK;
+        let x;
+        let y;
+
+        if (type === 'blobs') {
+          const r = sep * 1.15 + 0.5;
+          const a = (Math.PI * 2 * group) / trueK;
+          x = r * Math.cos(a) + randn() * noise;
+          y = 0.8 * r * Math.sin(a) + randn() * noise;
+        } else if (type === 'rings') {
+          const minR = 0.7;
+          const ringGap = 0.55 + sep * 0.24;
+          const radius = minR + group * ringGap;
+          const t = Math.random() * Math.PI * 2;
+          x = radius * Math.cos(t) + randn() * noise;
+          y = radius * Math.sin(t) + randn() * noise;
+        } else {
+          const label = i < count / 2 ? 0 : 1;
+          const t = Math.random() * Math.PI;
+          if (label === 0) {
+            x = Math.cos(t);
+            y = Math.sin(t);
+          } else {
+            x = 1 - Math.cos(t);
+            y = -Math.sin(t) - 0.5;
+          }
+          const sc = 2.0 + sep * 0.34;
+          x = (x - 0.55) * sc + (label === 0 ? -sep * 0.2 : sep * 0.2);
+          y = (y - 0.08) * sc;
+          x += randn() * noise;
+          y += randn() * noise;
+        }
+
+        points.push({ x: clamp(x, -4, 4), y: clamp(y, -4, 4), group, hard: -1, conf: 0 });
+      }
+      return points;
+    }
+
+    function logGaussianDiag(x, y, c) {
+      const vx = Math.max(1e-9, c.varX);
+      const vy = Math.max(1e-9, c.varY);
+      const dx = x - c.muX;
+      const dy = y - c.muY;
+      return -0.5 * (Math.log(2 * Math.PI * vx) + Math.log(2 * Math.PI * vy) + (dx * dx) / vx + (dy * dy) / vy);
+    }
+
+    const plot = document.getElementById('plot');
+    const pctx = plot.getContext('2d');
+    const llPlot = document.getElementById('llPlot');
+    const lctx = llPlot.getContext('2d');
+
+    const datasetType = document.getElementById('datasetType');
+    const kRange = document.getElementById('kRange');
+    const speedRange = document.getElementById('speedRange');
+    const countRange = document.getElementById('countRange');
+    const trueKRange = document.getElementById('trueKRange');
+    const sepRange = document.getElementById('sepRange');
+    const noiseRange = document.getElementById('noiseRange');
+    const varFloorRange = document.getElementById('varFloorRange');
+
+    let points = [];
+    let components = [];
+    let resp = [];
+    let running = true;
+    let stepCount = 0;
+    let history = [];
+    let lastEM = null;
+
+    let metrics = {
+      ll: 0,
+      dLL: 0,
+      entropy: 0,
+      meanMove: 0,
+      effective: 0
+    };
+
+    let lastT = performance.now();
+    let accMs = 0;
+
+    function sliders() {
+      return {
+        type: datasetType.value,
+        k: parseInt(kRange.value, 10),
+        speed: parseInt(speedRange.value, 10),
+        count: parseInt(countRange.value, 10),
+        trueK: parseInt(trueKRange.value, 10),
+        sep: parseFloat(sepRange.value),
+        noise: parseFloat(noiseRange.value),
+        varFloor: parseFloat(varFloorRange.value)
+      };
+    }
+
+    function updateLegend() {
+      const k = sliders().k;
+      const items = [];
+      for (let i = 0; i < k; i += 1) {
+        items.push(`<span><span class="dot" style="background:${colorOf(i, 0.95)}"></span>component ${i}</span>`);
+      }
+      items.push('<span><span class="dot" style="background:#fff"></span>2σ楕円（対角共分散）</span>');
+      document.getElementById('legend').innerHTML = items.join('');
+    }
+
+    function initializeModel() {
+      const s = sliders();
+      const k = s.k;
+      components = [];
+      resp = new Array(points.length);
+
+      let mx = 0;
+      let my = 0;
+      for (const p of points) {
+        mx += p.x;
+        my += p.y;
+      }
+      mx /= Math.max(1, points.length);
+      my /= Math.max(1, points.length);
+
+      let vx = 0;
+      let vy = 0;
+      for (const p of points) {
+        vx += (p.x - mx) * (p.x - mx);
+        vy += (p.y - my) * (p.y - my);
+      }
+      vx = vx / Math.max(1, points.length) + s.varFloor;
+      vy = vy / Math.max(1, points.length) + s.varFloor;
+
+      for (let i = 0; i < k; i += 1) {
+        const pick = points[Math.floor(Math.random() * points.length)];
+        components.push({
+          muX: pick.x + randn() * 0.03,
+          muY: pick.y + randn() * 0.03,
+          varX: vx,
+          varY: vy,
+          pi: 1 / k
+        });
+      }
+
+      stepCount = 0;
+      history = [];
+      lastEM = null;
+
+      const init = eStep();
+      assignHard(init.resp);
+      resp = init.resp;
+      metrics.ll = init.ll;
+      metrics.dLL = 0;
+      metrics.entropy = avgEntropy(resp);
+      metrics.meanMove = 0;
+      metrics.effective = components.filter(c => c.pi > 0.03).length;
+      history.push(metrics.ll);
+    }
+
+    function regenerateData() {
+      const s = sliders();
+      const trueK = s.type === 'moons' ? 2 : s.trueK;
+      points = generateData(s.type, s.count, s.sep, s.noise, trueK);
+      initializeModel();
+      updateLegend();
+    }
+
+    function eStep() {
+      const n = points.length;
+      const k = components.length;
+      const outResp = new Array(n);
+      const Nk = new Array(k).fill(0);
+      let ll = 0;
+
+      for (let i = 0; i < n; i += 1) {
+        const logs = new Array(k);
+        let maxLog = -Infinity;
+
+        for (let j = 0; j < k; j += 1) {
+          const v = Math.log(Math.max(1e-12, components[j].pi)) + logGaussianDiag(points[i].x, points[i].y, components[j]);
+          logs[j] = v;
+          if (v > maxLog) maxLog = v;
+        }
+
+        let z = 0;
+        const row = new Array(k);
+        for (let j = 0; j < k; j += 1) {
+          const e = Math.exp(logs[j] - maxLog);
+          row[j] = e;
+          z += e;
+        }
+
+        const logDen = maxLog + Math.log(Math.max(1e-20, z));
+        ll += logDen;
+
+        for (let j = 0; j < k; j += 1) {
+          row[j] /= Math.max(1e-20, z);
+          Nk[j] += row[j];
+        }
+
+        outResp[i] = row;
+      }
+
+      return { resp: outResp, Nk, ll };
+    }
+
+    function mStep(estep, oldComp) {
+      const s = sliders();
+      const n = points.length;
+      const k = components.length;
+
+      let move = 0;
+
+      for (let j = 0; j < k; j += 1) {
+        const Nk = Math.max(1e-10, estep.Nk[j]);
+
+        let sx = 0;
+        let sy = 0;
+        for (let i = 0; i < n; i += 1) {
+          const r = estep.resp[i][j];
+          sx += r * points[i].x;
+          sy += r * points[i].y;
+        }
+        const muX = sx / Nk;
+        const muY = sy / Nk;
+
+        let vx = 0;
+        let vy = 0;
+        for (let i = 0; i < n; i += 1) {
+          const r = estep.resp[i][j];
+          const dx = points[i].x - muX;
+          const dy = points[i].y - muY;
+          vx += r * dx * dx;
+          vy += r * dy * dy;
+        }
+        vx = Math.max(s.varFloor, vx / Nk);
+        vy = Math.max(s.varFloor, vy / Nk);
+
+        components[j].muX = muX;
+        components[j].muY = muY;
+        components[j].varX = vx;
+        components[j].varY = vy;
+        components[j].pi = Nk / n;
+
+        const dm = Math.hypot(muX - oldComp[j].muX, muY - oldComp[j].muY);
+        move += dm;
+      }
+
+      return move / Math.max(1, k);
+    }
+
+    function assignHard(r) {
+      for (let i = 0; i < points.length; i += 1) {
+        let best = 0;
+        let bestV = -1;
+        for (let j = 0; j < r[i].length; j += 1) {
+          if (r[i][j] > bestV) {
+            bestV = r[i][j];
+            best = j;
+          }
+        }
+        points[i].hard = best;
+        points[i].conf = bestV;
+      }
+    }
+
+    function avgEntropy(r) {
+      let e = 0;
+      for (let i = 0; i < r.length; i += 1) {
+        let h = 0;
+        for (let j = 0; j < r[i].length; j += 1) {
+          const v = Math.max(1e-12, r[i][j]);
+          h -= v * Math.log(v);
+        }
+        e += h;
+      }
+      return e / Math.max(1, r.length);
+    }
+
+    function runOneStep(source) {
+      const prevComp = components.map(c => ({ muX: c.muX, muY: c.muY, varX: c.varX, varY: c.varY, pi: c.pi }));
+
+      const e1 = eStep();
+      const move = mStep(e1, prevComp);
+      const e2 = eStep();
+
+      resp = e2.resp;
+      assignHard(resp);
+
+      const prevLL = metrics.ll;
+      const ll = e2.ll;
+      const dLL = ll - prevLL;
+      const ent = avgEntropy(resp);
+      const effective = components.filter(c => c.pi > 0.03).length;
+
+      stepCount += 1;
+      metrics = {
+        ll,
+        dLL,
+        entropy: ent,
+        meanMove: move,
+        effective
+      };
+
+      history.push(ll);
+      if (history.length > 300) history = history.slice(history.length - 300);
+
+      lastEM = {
+        source,
+        prevLL,
+        ll,
+        dLL,
+        move,
+        Nk: e2.Nk.slice(),
+        old: prevComp,
+        now: components.map(c => ({ muX: c.muX, muY: c.muY, varX: c.varX, varY: c.varY, pi: c.pi }))
+      };
+
+      if (Math.abs(dLL) < 1e-4 && move < 1e-3 && stepCount > 3) {
+        running = false;
+      }
+    }
+
+    function drawPlot() {
+      const w = plot.width;
+      const h = plot.height;
+      const pad = 56;
+      const xMin = -4;
+      const xMax = 4;
+      const yMin = -4;
+      const yMax = 4;
+      const x2px = x => pad + ((x - xMin) * (w - 2 * pad)) / (xMax - xMin);
+      const y2py = y => h - pad - ((y - yMin) * (h - 2 * pad)) / (yMax - yMin);
+
+      pctx.clearRect(0, 0, w, h);
+      pctx.fillStyle = 'rgba(7,14,30,0.55)';
+      pctx.fillRect(pad, pad, w - 2 * pad, h - 2 * pad);
+
+      pctx.strokeStyle = 'rgba(255,255,255,0.10)';
+      pctx.lineWidth = 1;
+      for (let i = 0; i <= 8; i += 1) {
+        const x = xMin + (i * (xMax - xMin)) / 8;
+        pctx.beginPath();
+        pctx.moveTo(x2px(x), y2py(yMin));
+        pctx.lineTo(x2px(x), y2py(yMax));
+        pctx.stroke();
+      }
+      for (let i = 0; i <= 8; i += 1) {
+        const y = yMin + (i * (yMax - yMin)) / 8;
+        pctx.beginPath();
+        pctx.moveTo(x2px(xMin), y2py(y));
+        pctx.lineTo(x2px(xMax), y2py(y));
+        pctx.stroke();
+      }
+
+      for (const p of points) {
+        pctx.fillStyle = colorOf(Math.max(0, p.hard), 0.45 + 0.5 * p.conf);
+        pctx.beginPath();
+        pctx.arc(x2px(p.x), y2py(p.y), 4.1, 0, Math.PI * 2);
+        pctx.fill();
+      }
+
+      if (lastEM) {
+        for (let i = 0; i < lastEM.old.length; i += 1) {
+          const a = lastEM.old[i];
+          const b = lastEM.now[i];
+          pctx.strokeStyle = colorOf(i, 0.9);
+          pctx.lineWidth = 1.3;
+          pctx.beginPath();
+          pctx.moveTo(x2px(a.muX), y2py(a.muY));
+          pctx.lineTo(x2px(b.muX), y2py(b.muY));
+          pctx.stroke();
+        }
+      }
+
+      for (let i = 0; i < components.length; i += 1) {
+        const c = components[i];
+        const px = x2px(c.muX);
+        const py = y2py(c.muY);
+
+        const rx = ((2 * Math.sqrt(c.varX)) * (w - 2 * pad)) / (xMax - xMin);
+        const ry = ((2 * Math.sqrt(c.varY)) * (h - 2 * pad)) / (yMax - yMin);
+
+        pctx.strokeStyle = colorOf(i, 0.92);
+        pctx.lineWidth = 1.8;
+        pctx.beginPath();
+        pctx.ellipse(px, py, Math.max(2, rx), Math.max(2, ry), 0, 0, Math.PI * 2);
+        pctx.stroke();
+
+        pctx.strokeStyle = 'rgba(255,255,255,0.95)';
+        pctx.lineWidth = 2.1;
+        pctx.beginPath();
+        pctx.moveTo(px - 6, py - 6);
+        pctx.lineTo(px + 6, py + 6);
+        pctx.stroke();
+        pctx.beginPath();
+        pctx.moveTo(px + 6, py - 6);
+        pctx.lineTo(px - 6, py + 6);
+        pctx.stroke();
+
+        pctx.fillStyle = colorOf(i, 0.95);
+        pctx.font = '11px "Hiragino Sans", sans-serif';
+        pctx.fillText(`k${i} π=${c.pi.toFixed(2)}`, px + 8, py - 8);
+      }
+
+      pctx.fillStyle = 'rgba(232,238,255,0.88)';
+      pctx.font = '12px "Hiragino Sans", sans-serif';
+      pctx.fillText('点の濃さは責務の最大値（確信度）', x2px(-3.95), h - 20);
+    }
+
+    function drawLL() {
+      const w = llPlot.width;
+      const h = llPlot.height;
+      const pad = 42;
+
+      lctx.clearRect(0, 0, w, h);
+      lctx.fillStyle = 'rgba(7,14,30,0.55)';
+      lctx.fillRect(pad, 16, w - 2 * pad, h - 30);
+
+      if (history.length < 2) {
+        lctx.fillStyle = 'rgba(225,233,255,0.82)';
+        lctx.font = '12px "Hiragino Sans", sans-serif';
+        lctx.fillText('EMステップを進めると log L の推移を表示します。', pad + 8, 38);
+        return;
+      }
+
+      const yMin = Math.min(...history);
+      const yMax = Math.max(...history);
+      const span = Math.max(1e-6, yMax - yMin);
+
+      const x2px = i => pad + (i * (w - 2 * pad)) / (history.length - 1);
+      const y2py = v => (h - 14) - ((v - yMin) * (h - 34)) / span;
+
+      lctx.strokeStyle = 'rgba(255,255,255,0.12)';
+      lctx.lineWidth = 1;
+      for (let i = 0; i <= 4; i += 1) {
+        const y = yMin + (i * span) / 4;
+        lctx.beginPath();
+        lctx.moveTo(pad, y2py(y));
+        lctx.lineTo(w - pad, y2py(y));
+        lctx.stroke();
+      }
+
+      lctx.strokeStyle = 'rgba(255,217,116,0.98)';
+      lctx.lineWidth = 2;
+      lctx.beginPath();
+      for (let i = 0; i < history.length; i += 1) {
+        if (i === 0) lctx.moveTo(x2px(i), y2py(history[i]));
+        else lctx.lineTo(x2px(i), y2py(history[i]));
+      }
+      lctx.stroke();
+
+      lctx.fillStyle = 'rgba(230,237,255,0.88)';
+      lctx.font = '11px "Hiragino Sans", sans-serif';
+      lctx.fillText('log-likelihood', pad + 8, 28);
+      lctx.fillText(`latest=${metrics.ll.toFixed(4)} dL=${metrics.dLL.toFixed(5)}`, pad + 8, h - 8);
+    }
+
+    function statusText() {
+      if (stepCount < 2) {
+        return { level: 'warn', text: '初期状態です。成分の位置と分散を調整し始めます。' };
+      }
+      if (Math.abs(metrics.dLL) < 1e-4 && metrics.meanMove < 1e-3) {
+        return { level: 'good', text: '収束に近いです。尤度増分と平均移動量が小さくなっています。' };
+      }
+      if (metrics.effective < Math.max(1, Math.floor(sliders().k * 0.6))) {
+        return { level: 'warn', text: '一部成分の重みが小さく、成分が実質的に使われていません。' };
+      }
+      return { level: 'good', text: 'EM反復中です。責務とガウス成分を交互に更新しています。' };
+    }
+
+    function updateUI() {
+      const s = sliders();
+      const trueK = s.type === 'moons' ? 2 : s.trueK;
+
+      document.getElementById('kVal').textContent = `${s.k}`;
+      document.getElementById('speedVal').textContent = `${s.speed}`;
+      document.getElementById('countVal').textContent = `${s.count}`;
+      document.getElementById('trueKVal').textContent = `${trueK}`;
+      document.getElementById('sepVal').textContent = s.sep.toFixed(1);
+      document.getElementById('noiseVal').textContent = s.noise.toFixed(2);
+      document.getElementById('varFloorVal').textContent = s.varFloor.toFixed(3);
+
+      trueKRange.disabled = s.type === 'moons';
+
+      document.getElementById('modePill').textContent = running ? 'モード: 学習中' : 'モード: 停止中';
+      document.getElementById('statePill').textContent = running ? '状態: 計算中' : '状態: 一時停止';
+
+      document.getElementById('stepVal').textContent = `${stepCount}`;
+      document.getElementById('llVal').textContent = metrics.ll.toFixed(5);
+      document.getElementById('dllVal').textContent = metrics.dLL.toFixed(5);
+      document.getElementById('entVal').textContent = metrics.entropy.toFixed(5);
+      document.getElementById('moveVal').textContent = metrics.meanMove.toFixed(5);
+      document.getElementById('effVal').textContent = `${metrics.effective}`;
+
+      const st = statusText();
+      const statusBox = document.getElementById('statusBox');
+      statusBox.className = `status ${st.level}`;
+      statusBox.textContent = `評価: ${st.text}`;
+
+      const lines = [];
+      lines.push(`dataset=${s.type}, K=${s.k}, trueK=${trueK}`);
+      lines.push(`step=${stepCount}, logL=${metrics.ll.toFixed(6)}, dL=${metrics.dLL.toFixed(6)}`);
+      lines.push(`entropy=${metrics.entropy.toFixed(6)}, meanMove=${metrics.meanMove.toFixed(6)}`);
+      for (let i = 0; i < components.length; i += 1) {
+        const c = components[i];
+        lines.push(`k${i}: pi=${c.pi.toFixed(4)}, mu=(${c.muX.toFixed(3)},${c.muY.toFixed(3)}), var=(${c.varX.toFixed(3)},${c.varY.toFixed(3)})`);
+      }
+      document.getElementById('detailBox').textContent = lines.join('\n');
+
+      updateLegend();
+    }
+
+    function frame(now) {
+      const dt = now - lastT;
+      lastT = now;
+
+      if (running) {
+        accMs += dt;
+        const stepMs = 1000 / Math.max(1, sliders().speed);
+        let guard = 0;
+        while (accMs >= stepMs && guard < 120) {
+          runOneStep('auto');
+          accMs -= stepMs;
+          guard += 1;
+        }
+      } else {
+        accMs = 0;
+      }
+
+      drawPlot();
+      drawLL();
+      updateUI();
+      requestAnimationFrame(frame);
+    }
+
+    document.getElementById('btnPlay').addEventListener('click', () => {
+      running = true;
+    });
+
+    document.getElementById('btnPause').addEventListener('click', () => {
+      running = false;
+    });
+
+    document.getElementById('btnStep').addEventListener('click', () => {
+      running = false;
+      runOneStep('manual');
+    });
+
+    document.getElementById('btnReset').addEventListener('click', () => {
+      running = false;
+      initializeModel();
+    });
+
+    document.getElementById('btnNew').addEventListener('click', () => {
+      running = false;
+      regenerateData();
+    });
+
+    datasetType.addEventListener('change', () => {
+      running = false;
+      regenerateData();
+    });
+
+    kRange.addEventListener('change', () => {
+      running = false;
+      initializeModel();
+      updateLegend();
+    });
+
+    countRange.addEventListener('change', () => {
+      running = false;
+      regenerateData();
+    });
+
+    trueKRange.addEventListener('change', () => {
+      running = false;
+      regenerateData();
+    });
+
+    sepRange.addEventListener('change', () => {
+      running = false;
+      regenerateData();
+    });
+
+    noiseRange.addEventListener('change', () => {
+      running = false;
+      regenerateData();
+    });
+
+    varFloorRange.addEventListener('change', () => {
+      running = false;
+      initializeModel();
+    });
+
+    const live = [kRange, speedRange, countRange, trueKRange, sepRange, noiseRange, varFloorRange];
+    for (const r of live) {
+      r.addEventListener('input', updateUI);
+    }
+
+    regenerateData();
+    requestAnimationFrame(frame);
+  })();
+  </script>
+</body>
+</html>

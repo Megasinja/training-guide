@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>クラスタリング教材ハブ</title>
+  <style>
+    :root {
+      --bg:#081326;
+      --panel:#0f1f3e;
+      --text:#e9efff;
+      --muted:#aab8de;
+      --line:#2b406e;
+      --primary:#75a8ff;
+      --good:#67d79a;
+      --warn:#ffd06b;
+    }
+
+    * { box-sizing:border-box; }
+
+    body {
+      margin:0;
+      min-height:100vh;
+      color:var(--text);
+      font-family:"Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif;
+      background:
+        radial-gradient(circle at 12% 14%, rgba(115,167,255,0.17), transparent 34%),
+        radial-gradient(circle at 88% 10%, rgba(111,223,167,0.16), transparent 28%),
+        linear-gradient(180deg, #060f1d, var(--bg));
+    }
+
+    .top-nav {
+      max-width:1120px;
+      margin:14px auto 0;
+      padding:0 18px;
+    }
+
+    .top-link {
+      color:var(--muted);
+      text-decoration:none;
+      font-size:13px;
+    }
+
+    .top-link:hover {
+      color:var(--text);
+      text-decoration:underline;
+    }
+
+    .wrap {
+      max-width:1120px;
+      margin:0 auto;
+      padding:16px 18px 28px;
+      display:grid;
+      gap:16px;
+    }
+
+    .card {
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,0.09);
+      background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+      padding:16px;
+      box-shadow:0 15px 32px rgba(0,0,0,0.35);
+    }
+
+    h1 {
+      margin:0 0 8px;
+      font-size:24px;
+      line-height:1.35;
+    }
+
+    h2 {
+      margin:0;
+      font-size:18px;
+      line-height:1.4;
+    }
+
+    .sub {
+      margin:0;
+      color:var(--muted);
+      font-size:14px;
+      line-height:1.7;
+    }
+
+    .grid {
+      display:grid;
+      grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));
+      gap:12px;
+      margin-top:12px;
+    }
+
+    .algo {
+      border:1px solid rgba(255,255,255,0.1);
+      border-radius:12px;
+      padding:12px;
+      background:rgba(255,255,255,0.03);
+    }
+
+    .pill {
+      display:inline-block;
+      padding:2px 8px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,0.13);
+      background:rgba(255,255,255,0.05);
+      color:var(--muted);
+      font-size:12px;
+      margin-bottom:8px;
+    }
+
+    .formula {
+      margin-top:8px;
+      border-radius:8px;
+      border:1px solid rgba(255,255,255,0.1);
+      background:rgba(8,16,32,0.5);
+      padding:8px;
+      font-size:12px;
+      color:#d9e3ff;
+      line-height:1.6;
+      font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      white-space:pre-wrap;
+    }
+
+    .row {
+      margin-top:10px;
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+
+    .button {
+      display:inline-block;
+      text-decoration:none;
+      border-radius:10px;
+      border:1px solid rgba(117,168,255,0.55);
+      background:rgba(117,168,255,0.2);
+      color:var(--text);
+      font-size:13px;
+      padding:8px 12px;
+      font-weight:700;
+    }
+
+    .button:hover {
+      background:rgba(117,168,255,0.3);
+    }
+
+    .list {
+      margin:8px 0 0;
+      padding-left:18px;
+      color:#d5dfff;
+      font-size:13px;
+      line-height:1.65;
+    }
+
+    .note {
+      margin-top:10px;
+      color:var(--muted);
+      font-size:12px;
+      line-height:1.6;
+    }
+  </style>
+</head>
+<body>
+  <div class="top-nav">
+    <a class="top-link" href="index.html">← 新卒AI研修トップへ戻る</a>
+  </div>
+
+  <div class="wrap">
+    <section class="card">
+      <h1>クラスタリング教材ハブ</h1>
+      <p class="sub">
+        このページはクラスタリング関連シミュレータの入口です。
+        それぞれのページ上部に「定義式・アルゴリズム式」と「パラメータ説明」があり、
+        下部で実際にシミュレーションできます。
+      </p>
+      <div class="row">
+        <a class="button" href="clustering-kmeans-simulator.html">K-means シミュレータへ</a>
+        <a class="button" href="clustering-dbscan-simulator.html">DBSCAN シミュレータへ</a>
+        <a class="button" href="clustering-hierarchical-simulator.html">階層クラスタリングへ</a>
+        <a class="button" href="clustering-gmm-em-simulator.html">GMM (EM) シミュレータへ</a>
+        <a class="button" href="clustering-spectral-simulator.html">Spectral シミュレータへ</a>
+        <a class="button" href="clustering-mean-shift-simulator.html">Mean Shift シミュレータへ</a>
+        <a class="button" href="clustering-optics-simulator.html">OPTICS シミュレータへ</a>
+        <a class="button" href="clustering-birch-simulator.html">BIRCH シミュレータへ</a>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>アルゴリズム早見表</h2>
+      <div class="grid">
+        <article class="algo">
+          <div class="pill">Partitioning</div>
+          <h2 style="font-size:17px;">K-means</h2>
+          <p class="sub" style="font-size:13px; margin-top:6px;">
+            重心との距離が最小になるように点を割り当てる反復法。球状クラスタに強い。
+          </p>
+          <div class="formula">J = Σ_i ||x_i - μ_{c_i}||²
+c_i = argmin_k ||x_i - μ_k||²
+μ_k = (1/|C_k|) Σ_{i∈C_k} x_i</div>
+          <ul class="list">
+            <li>主パラメータ: クラスタ数 K</li>
+            <li>注意点: 初期値依存、外れ値に弱い</li>
+          </ul>
+        </article>
+
+        <article class="algo">
+          <div class="pill">Density-based</div>
+          <h2 style="font-size:17px;">DBSCAN</h2>
+          <p class="sub" style="font-size:13px; margin-top:6px;">
+            密度連結でクラスタを見つける。外れ値をノイズとして扱える。
+          </p>
+          <div class="formula">N_ε(p) = {q | dist(p,q) ≤ ε}
+core(p) ⇔ |N_ε(p)| ≥ MinPts
+cluster = density-reachable set</div>
+          <ul class="list">
+            <li>主パラメータ: ε, MinPts</li>
+            <li>注意点: 密度差が大きいデータは調整が難しい</li>
+          </ul>
+        </article>
+
+        <article class="algo">
+          <div class="pill">Hierarchical</div>
+          <h2 style="font-size:17px;">Agglomerative</h2>
+          <p class="sub" style="font-size:13px; margin-top:6px;">
+            各点を1クラスタとして開始し、近いクラスタ同士を順にマージ。
+          </p>
+          <div class="formula">d_single(A,B) = min_{a∈A,b∈B} dist(a,b)
+d_complete(A,B) = max_{a∈A,b∈B} dist(a,b)
+d_average(A,B) = mean_{a∈A,b∈B} dist(a,b)</div>
+          <ul class="list">
+            <li>主パラメータ: linkage, 目標クラスタ数 K</li>
+            <li>注意点: データ数が増えると計算が重くなる</li>
+          </ul>
+        </article>
+
+        <article class="algo">
+          <div class="pill">Probabilistic</div>
+          <h2 style="font-size:17px;">GMM (EM)</h2>
+          <p class="sub" style="font-size:13px; margin-top:6px;">
+            ガウス混合分布を仮定し、責務とパラメータを交互更新。楕円クラスタに対応。
+          </p>
+          <div class="formula">p(x)=Σ_k π_k N(x|μ_k,Σ_k)
+r_nk = π_k N(x_n)/Σ_j π_j N_j(x_n)
+μ_k, Σ_k, π_k を M-step で更新</div>
+          <ul class="list">
+            <li>主パラメータ: 成分数 K、分散下限</li>
+            <li>注意点: 局所解・初期値依存</li>
+          </ul>
+        </article>
+
+        <article class="algo">
+          <div class="pill">Graph-based</div>
+          <h2 style="font-size:17px;">Spectral</h2>
+          <p class="sub" style="font-size:13px; margin-top:6px;">
+            類似度グラフの固有空間へ埋め込み、埋め込み空間でK-meansを実行。
+          </p>
+          <div class="formula">W_ij = exp(-||x_i-x_j||²/2σ²)
+S = D^{-1/2} W D^{-1/2}
+U = top-K eigenvectors, then K-means(U)</div>
+          <ul class="list">
+            <li>主パラメータ: K、k近傍、σ</li>
+            <li>注意点: 固有計算が重い</li>
+          </ul>
+        </article>
+
+        <article class="algo">
+          <div class="pill">Mode-seeking</div>
+          <h2 style="font-size:17px;">Mean Shift</h2>
+          <p class="sub" style="font-size:13px; margin-top:6px;">
+            密度勾配上昇でモードへ収束させ、収束先でクラスタ化。Kの事前指定不要。
+          </p>
+          <div class="formula">m(x)=Σ_i K_h(x_i-x)x_i / Σ_i K_h(x_i-x)
+x ← m(x)
+近いモードを統合してクラスタ化</div>
+          <ul class="list">
+            <li>主パラメータ: bandwidth h</li>
+            <li>注意点: 計算量が大きい</li>
+          </ul>
+        </article>
+
+        <article class="algo">
+          <div class="pill">Density-based</div>
+          <h2 style="font-size:17px;">OPTICS</h2>
+          <p class="sub" style="font-size:13px; margin-top:6px;">
+            処理順とreachability距離を出力し、閾値で多様な密度クラスタを抽出。
+          </p>
+          <div class="formula">coreDist(p), reachDist(q)
+seed集合を最小reachDist優先で展開
+reachability plot からクラスタ抽出</div>
+          <ul class="list">
+            <li>主パラメータ: ε、MinPts、抽出閾値</li>
+            <li>注意点: 可視化解釈が必要</li>
+          </ul>
+        </article>
+
+        <article class="algo">
+          <div class="pill">Large-scale</div>
+          <h2 style="font-size:17px;">BIRCH</h2>
+          <p class="sub" style="font-size:13px; margin-top:6px;">
+            CF要約を木構造で保持し、逐次挿入しながらマイクロクラスタを作る。
+          </p>
+          <div class="formula">CF=(N,LS,SS), μ=LS/N
+R=sqrt(SS/N-||μ||²)
+R≤T なら吸収、超えれば新規CF</div>
+          <ul class="list">
+            <li>主パラメータ: しきい値 T、分岐係数 B</li>
+            <li>注意点: 要約段階の設計で品質が変化</li>
+          </ul>
+        </article>
+      </div>
+      <p class="note">
+        推奨学習順: <b>K-means → DBSCAN → 階層クラスタリング</b>。
+        前者ほど直感的で、後者ほど表現力と設定の自由度が上がります。
+      </p>
+    </section>
+  </div>
+</body>
+</html>

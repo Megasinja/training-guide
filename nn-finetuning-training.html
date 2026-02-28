@@ -1,0 +1,636 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>NNファインチューニング研修資料</title>
+  <style>
+    :root {
+      --bg:#081326;
+      --panel:#0f1f3e;
+      --panel2:#12274c;
+      --text:#e9efff;
+      --muted:#aab8de;
+      --line:#2b406e;
+      --good:#67d79a;
+      --warn:#ffd06b;
+      --bad:#ff8787;
+      --accent:#73a7ff;
+      --chip:#1c376c;
+    }
+
+    * { box-sizing:border-box; }
+
+    body {
+      margin:0;
+      min-height:100vh;
+      color:var(--text);
+      font-family:"Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif;
+      background:
+        radial-gradient(circle at 11% 14%, rgba(115,167,255,0.17), transparent 34%),
+        radial-gradient(circle at 88% 9%, rgba(111,223,167,0.14), transparent 26%),
+        linear-gradient(180deg, #060f1d, var(--bg));
+    }
+
+    .top-nav {
+      max-width:1180px;
+      margin:14px auto 0;
+      padding:0 18px;
+      display:flex;
+      gap:14px;
+      flex-wrap:wrap;
+    }
+
+    .top-link {
+      color:var(--muted);
+      text-decoration:none;
+      font-size:13px;
+    }
+
+    .top-link:hover {
+      color:var(--text);
+      text-decoration:underline;
+    }
+
+    .wrap {
+      max-width:1180px;
+      margin:0 auto;
+      padding:16px 18px 28px;
+      display:grid;
+      grid-template-columns:1.1fr 0.9fr;
+      gap:16px;
+    }
+
+    .card {
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,0.09);
+      background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+      padding:14px;
+      box-shadow:0 15px 32px rgba(0,0,0,0.35);
+    }
+
+    h1 {
+      margin:0 0 8px;
+      font-size:21px;
+      line-height:1.35;
+    }
+
+    h2 {
+      margin:0;
+      font-size:16px;
+      line-height:1.4;
+    }
+
+    .sub {
+      margin:0;
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.65;
+    }
+
+    .chips {
+      margin-top:10px;
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+    }
+
+    .chip {
+      font-size:12px;
+      color:#dce6ff;
+      background:rgba(115,167,255,0.16);
+      border:1px solid rgba(115,167,255,0.35);
+      border-radius:999px;
+      padding:4px 9px;
+    }
+
+    .grid {
+      margin-top:12px;
+      display:grid;
+      grid-template-columns:repeat(2, minmax(0, 1fr));
+      gap:10px;
+    }
+
+    .mini {
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,0.08);
+      background:rgba(255,255,255,0.03);
+      padding:10px;
+    }
+
+    .mini-title {
+      font-size:13px;
+      font-weight:700;
+      margin-bottom:5px;
+    }
+
+    .mini p {
+      margin:0;
+      color:var(--muted);
+      font-size:12px;
+      line-height:1.55;
+    }
+
+    .hr {
+      height:1px;
+      margin:12px 0;
+      background:rgba(255,255,255,0.11);
+    }
+
+    table {
+      width:100%;
+      border-collapse:collapse;
+      margin-top:10px;
+      font-size:12px;
+    }
+
+    th, td {
+      border:1px solid rgba(255,255,255,0.12);
+      padding:8px;
+      vertical-align:top;
+      line-height:1.5;
+    }
+
+    th {
+      color:#dbe6ff;
+      background:rgba(115,167,255,0.14);
+      font-weight:700;
+      text-align:left;
+    }
+
+    td {
+      color:#d2ddff;
+      background:rgba(255,255,255,0.02);
+    }
+
+    .flow {
+      margin-top:10px;
+      display:grid;
+      gap:8px;
+    }
+
+    .step {
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,0.09);
+      background:rgba(255,255,255,0.03);
+      padding:8px 10px;
+      font-size:12px;
+      line-height:1.6;
+      color:#d2ddff;
+    }
+
+    .step b {
+      color:#eef3ff;
+    }
+
+    .point {
+      margin-top:10px;
+      border-radius:10px;
+      border:1px solid rgba(111,223,167,0.35);
+      background:rgba(111,223,167,0.12);
+      padding:9px 10px;
+      font-size:12px;
+      line-height:1.6;
+      color:#dcffe9;
+    }
+
+    .warn {
+      border-color:rgba(255,208,107,0.42);
+      background:rgba(255,208,107,0.14);
+      color:#fff3d2;
+    }
+
+    .bad {
+      border-color:rgba(255,135,135,0.45);
+      background:rgba(255,135,135,0.14);
+      color:#ffe3e3;
+    }
+
+    .selectrow {
+      margin:8px 0;
+      display:grid;
+      grid-template-columns:118px 1fr;
+      gap:10px;
+      align-items:center;
+      font-size:13px;
+    }
+
+    select {
+      width:100%;
+      border-radius:9px;
+      border:1px solid rgba(255,255,255,0.16);
+      background:rgba(255,255,255,0.06);
+      color:var(--text);
+      font-size:13px;
+      padding:8px;
+    }
+
+    .kv {
+      margin-top:10px;
+      display:grid;
+      grid-template-columns:1fr auto;
+      gap:8px 10px;
+      font-size:13px;
+    }
+
+    .kv div:nth-child(odd) {
+      color:var(--muted);
+    }
+
+    .result {
+      margin-top:10px;
+      border-radius:10px;
+      border:1px solid rgba(115,167,255,0.45);
+      background:rgba(115,167,255,0.14);
+      padding:10px;
+      font-size:12px;
+      line-height:1.65;
+      color:#e4edff;
+      min-height:118px;
+      white-space:pre-wrap;
+    }
+
+    .check {
+      margin-top:10px;
+      display:grid;
+      gap:6px;
+    }
+
+    .check label {
+      display:flex;
+      gap:8px;
+      align-items:flex-start;
+      font-size:12px;
+      color:#d6e1ff;
+      line-height:1.55;
+      border:1px solid rgba(255,255,255,0.08);
+      border-radius:9px;
+      background:rgba(255,255,255,0.02);
+      padding:8px;
+    }
+
+    .note {
+      margin-top:10px;
+      color:var(--muted);
+      font-size:12px;
+      line-height:1.6;
+    }
+
+    .pill {
+      display:inline-block;
+      margin-left:6px;
+      padding:2px 8px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,0.12);
+      background:rgba(255,255,255,0.05);
+      color:var(--muted);
+      font-size:12px;
+      vertical-align:middle;
+    }
+
+    .formula {
+      margin-top:10px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,0.11);
+      background:rgba(2,8,20,0.45);
+      padding:10px;
+      color:#d7e2ff;
+      font-size:12px;
+      line-height:1.7;
+      font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      white-space:pre-wrap;
+    }
+
+    @media (max-width: 980px) {
+      .wrap { grid-template-columns:1fr; }
+      .grid { grid-template-columns:1fr; }
+      .selectrow { grid-template-columns:106px 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="top-nav">
+    <a class="top-link" href="index.html">← 新卒AI研修トップへ戻る</a>
+  </div>
+
+  <div class="wrap">
+    <section class="card">
+      <h1>NNファインチューニング研修資料</h1>
+      <p class="sub">
+        このページは「どの手法を選び、どの順番で検証し、どこで失敗しやすいか」を短時間で把握するための教材です。
+        初学者向けに、実務判断に必要なポイントだけに絞っています。
+      </p>
+      <div class="chips">
+        <span class="chip">対象: 新卒〜実務初期</span>
+        <span class="chip">目的: 再現性のある微調整</span>
+        <span class="chip">想定モデル: LLM / Vision / 音声</span>
+      </div>
+
+      <div class="grid">
+        <div class="mini">
+          <div class="mini-title">ゴール</div>
+          <p>ベースモデルの知識を壊しすぎず、業務タスクに適応させる。</p>
+        </div>
+        <div class="mini">
+          <div class="mini-title">基本思想</div>
+          <p>「必要最小限の更新」から始め、効果が足りない時だけ更新範囲を広げる。</p>
+        </div>
+        <div class="mini">
+          <div class="mini-title">優先順位</div>
+          <p>データ品質 ＞ 評価設計 ＞ 学習設定。ハイパラ調整は最後。</p>
+        </div>
+        <div class="mini">
+          <div class="mini-title">典型失敗</div>
+          <p>高学習率・評価漏れ・データ漏洩・過学習・忘却（catastrophic forgetting）。</p>
+        </div>
+      </div>
+
+      <div class="hr"></div>
+
+      <h2>1. まず用語を整理</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>用語</th>
+            <th>意味</th>
+            <th>実務上の判断</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Pretraining</td>
+            <td>大規模汎用データでの事前学習。</td>
+            <td>自前実施は高コスト。通常は既存モデルを利用。</td>
+          </tr>
+          <tr>
+            <td>Fine-tuning</td>
+            <td>特定タスク向けに追加学習。</td>
+            <td>更新範囲を小さく始めるのが安全。</td>
+          </tr>
+          <tr>
+            <td>PEFT (LoRA/QLoRA)</td>
+            <td>一部の小パラメータだけ学習。</td>
+            <td>GPU制約がある現場の第一選択になりやすい。</td>
+          </tr>
+          <tr>
+            <td>Instruction Tuning</td>
+            <td>指示応答形式に合わせる調整。</td>
+            <td>対話系品質を上げるが、評価指標を先に定義する。</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="hr"></div>
+
+      <h2>2. 手法比較（何をいつ使うか）</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>手法</th>
+            <th>更新パラメータ</th>
+            <th>計算コスト</th>
+            <th>向いている状況</th>
+            <th>主な注意点</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Linear Probing</td>
+            <td>最終層のみ</td>
+            <td>低</td>
+            <td>データ少・ドメイン差小</td>
+            <td>表現力不足で頭打ちになりやすい</td>
+          </tr>
+          <tr>
+            <td>Partial Unfreeze</td>
+            <td>上位ブロック＋ヘッド</td>
+            <td>中</td>
+            <td>中規模データ・中程度ドメイン差</td>
+            <td>どこまで解凍するかの設計が必要</td>
+          </tr>
+          <tr>
+            <td>Full Fine-tuning</td>
+            <td>全パラメータ</td>
+            <td>高</td>
+            <td>十分なデータと計算資源</td>
+            <td>過学習・忘却・コスト増</td>
+          </tr>
+          <tr>
+            <td>LoRA / QLoRA</td>
+            <td>低ランク行列のみ</td>
+            <td>低〜中</td>
+            <td>GPU制約あり・迅速なPoC</td>
+            <td>rank/alpha設定で性能が変動</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="point">
+        現場の実践順序: <b>Linear Probing → LoRA/Partial → Full</b>
+        の順で段階的に強くするのが、時間対効果と安全性のバランスが良いです。
+      </div>
+
+      <div class="hr"></div>
+
+      <h2>3. 実務フロー（7ステップ）</h2>
+      <div class="flow">
+        <div class="step"><b>Step 1: 目的とKPI定義</b><br>例: 正解率だけでなく、誤検知率・推論レイテンシ・運用コストを同時に定義。</div>
+        <div class="step"><b>Step 2: データ整備</b><br>重複除去、リーク防止、ラベル監査。train/valid/testを先に固定。</div>
+        <div class="step"><b>Step 3: ベースライン作成</b><br>未調整モデルとLinear Probingで基準を作る。</div>
+        <div class="step"><b>Step 4: 小さく学習</b><br>LoRAや部分解凍で短時間試行。早期終了とチェックポイントを有効化。</div>
+        <div class="step"><b>Step 5: エラー分析</b><br>失敗例をカテゴリ化し、データ改善かモデル改善かを切り分ける。</div>
+        <div class="step"><b>Step 6: 本学習</b><br>必要なら更新範囲を広げる。必ず同条件比較で判断。</div>
+        <div class="step"><b>Step 7: デプロイ前検証</b><br>分布変化・安全性・再現性・ロールバック手順を確認。</div>
+      </div>
+
+      <div class="formula">推奨の初期設定（目安）
+Learning rate:
+  Full FT: 1e-5 〜 5e-5
+  LoRA/Adapter: 5e-5 〜 3e-4
+Warmup ratio: 3% 〜 10%
+Epoch: 1 〜 5（まず短く）
+Weight decay: 0.01 前後
+Gradient clipping: 1.0 前後</div>
+    </section>
+
+    <section class="card">
+      <h2>4. ハイパラの考え方 <span class="pill">何を優先して調整するか</span></h2>
+      <div class="flow">
+        <div class="step"><b>最優先:</b> 学習率。発散・過学習・収束遅れの多くはここで決まる。</div>
+        <div class="step"><b>次点:</b> バッチサイズと有効バッチ（勾配蓄積含む）。安定性に直結。</div>
+        <div class="step"><b>その後:</b> epoch/warmup/weight decay。過学習抑制と汎化の調整。</div>
+      </div>
+
+      <div class="point warn" style="margin-top:10px;">
+        「高いtrain性能なのに本番で弱い」は、モデルではなく評価設計やデータ分割の問題であることが多いです。
+      </div>
+
+      <div class="hr"></div>
+
+      <h2>5. よくある失敗と対策</h2>
+      <div class="flow">
+        <div class="step"><b>失敗: 学習率が高すぎる</b><br>症状: 損失が上下に暴れる。<br>対策: LRを1/3〜1/10に下げる、warmup追加。</div>
+        <div class="step"><b>失敗: データリーク</b><br>症状: 検証だけ極端に高性能。<br>対策: 分割を先に固定し、重複チェックを自動化。</div>
+        <div class="step"><b>失敗: catastrophic forgetting</b><br>症状: 既存能力が急落。<br>対策: 更新範囲縮小、混合データ、正則化を追加。</div>
+        <div class="step"><b>失敗: 目的と指標の不一致</b><br>症状: KPIは改善しないのに精度だけ上がる。<br>対策: 事業KPIに直結する評価指標へ再設計。</div>
+      </div>
+
+      <div class="hr"></div>
+
+      <h2>6. 戦略レコメンダー（簡易）</h2>
+      <p class="sub" style="margin-top:6px;">
+        条件を選ぶと、最初に試すべきファインチューニング戦略を提案します。
+      </p>
+
+      <div class="selectrow">
+        <div>データ量</div>
+        <select id="dataSize">
+          <option value="small">小（〜1万件）</option>
+          <option value="medium">中（1万〜30万件）</option>
+          <option value="large">大（30万件〜）</option>
+        </select>
+      </div>
+
+      <div class="selectrow">
+        <div>ドメイン差</div>
+        <select id="domainGap">
+          <option value="low">低（事前学習に近い）</option>
+          <option value="mid">中</option>
+          <option value="high">高（専門領域）</option>
+        </select>
+      </div>
+
+      <div class="selectrow">
+        <div>計算資源</div>
+        <select id="budget">
+          <option value="low">低（1〜2GPU級）</option>
+          <option value="mid">中</option>
+          <option value="high">高（分散前提）</option>
+        </select>
+      </div>
+
+      <div class="selectrow">
+        <div>納期</div>
+        <select id="deadline">
+          <option value="tight">短い（まずPoC）</option>
+          <option value="normal">通常</option>
+          <option value="long">長め（精度最優先）</option>
+        </select>
+      </div>
+
+      <div class="selectrow">
+        <div>本番安定性</div>
+        <select id="stability">
+          <option value="high">高く必要</option>
+          <option value="mid">標準</option>
+          <option value="low">PoC優先</option>
+        </select>
+      </div>
+
+      <div class="result" id="planResult">条件を選択するとここに推奨方針が表示されます。</div>
+
+      <div class="kv">
+        <div>推奨方式</div><div id="planMethod">-</div>
+        <div>推奨初期LR</div><div id="planLr">-</div>
+        <div>優先検証項目</div><div id="planFocus">-</div>
+      </div>
+
+      <div class="hr"></div>
+
+      <h2>7. デプロイ前チェックリスト</h2>
+      <div class="check">
+        <label><input type="checkbox" /> train/valid/test のリーク検査を完了した</label>
+        <label><input type="checkbox" /> ベースライン（未調整 or 線形ヘッド）との差分を保存した</label>
+        <label><input type="checkbox" /> 失敗事例の分析レポート（最低20件）を作成した</label>
+        <label><input type="checkbox" /> 再学習手順とロールバック手順を文書化した</label>
+        <label><input type="checkbox" /> 本番データに近いオフライン評価で再確認した</label>
+      </div>
+
+      <div class="point bad" style="margin-top:10px;">
+        注意: 精度の数値だけでリリース判断しないでください。
+        「運用上の失敗コスト（誤分類1件の影響）」まで含めて判断するのが実務です。
+      </div>
+
+      <p class="note">
+        追加演習案: 同一データで <code>LoRA</code> と <code>Full FT</code> を比較し、
+        学習時間・GPU使用量・検証性能・推論速度の4軸でレポート化してください。
+      </p>
+    </section>
+  </div>
+
+  <script>
+  (() => {
+    const dataSize = document.getElementById('dataSize');
+    const domainGap = document.getElementById('domainGap');
+    const budget = document.getElementById('budget');
+    const deadline = document.getElementById('deadline');
+    const stability = document.getElementById('stability');
+
+    const planResult = document.getElementById('planResult');
+    const planMethod = document.getElementById('planMethod');
+    const planLr = document.getElementById('planLr');
+    const planFocus = document.getElementById('planFocus');
+
+    function recommend() {
+      const s = {
+        dataSize: dataSize.value,
+        domainGap: domainGap.value,
+        budget: budget.value,
+        deadline: deadline.value,
+        stability: stability.value
+      };
+
+      let method = 'LoRA / QLoRA';
+      let lr = '5e-5 〜 2e-4';
+      let focus = 'リーク防止、早期終了、エラー分析';
+      const lines = [];
+
+      if (s.budget === 'high' && s.dataSize === 'large' && s.domainGap === 'high' && s.deadline !== 'tight') {
+        method = 'Full Fine-tuning（段階的に）';
+        lr = '1e-5 〜 3e-5';
+        focus = '忘却対策、評価安定性、推論コスト';
+        lines.push('推奨: まずLoRAで当たりを付けた後、必要ならFull FTへ段階移行。');
+        lines.push('理由: ドメイン差とデータ量が大きく、全体最適化の効果が出やすい。');
+      } else if (s.dataSize === 'small' && s.domainGap === 'low') {
+        method = 'Linear Probing or Partial Unfreeze';
+        lr = '1e-4（ヘッド） / 1e-5（上位層）';
+        focus = '過学習監視、データ拡張、ラベル品質';
+        lines.push('推奨: 小さく更新して汎化を優先。');
+        lines.push('理由: データが少ないため大規模更新は過学習リスクが高い。');
+      } else if (s.deadline === 'tight' || s.budget === 'low') {
+        method = 'LoRA / QLoRA（第一選択）';
+        lr = '8e-5 〜 3e-4';
+        focus = '短サイクル評価、rank/alpha探索';
+        lines.push('推奨: 低コストで反復できるPEFT中心。');
+        lines.push('理由: 納期またはGPU制約が厳しいため、試行回数を最大化する。');
+      } else if (s.domainGap === 'high' && s.dataSize !== 'small') {
+        method = 'Partial Unfreeze + LoRA併用';
+        lr = '2e-5 〜 8e-5';
+        focus = '表現不足の層特定、忘却監視';
+        lines.push('推奨: 上位層を解凍しつつ低ランク更新を併用。');
+        lines.push('理由: 適応力と安定性のバランスが取りやすい。');
+      } else {
+        lines.push('推奨: LoRAから開始し、性能不足時のみ更新範囲を拡張。');
+      }
+
+      if (s.stability === 'high') {
+        lines.push('追加条件: 本番安定性重視のため、最終判定前にデータ期間をずらした再評価を実施。');
+      }
+
+      lines.push('共通手順: ベースライン確立 → 小規模学習 → エラー分析 → 必要なら拡張。');
+
+      planMethod.textContent = method;
+      planLr.textContent = lr;
+      planFocus.textContent = focus;
+      planResult.textContent = lines.join('\n');
+    }
+
+    [dataSize, domainGap, budget, deadline, stability].forEach(el => {
+      el.addEventListener('change', recommend);
+    });
+
+    recommend();
+  })();
+  </script>
+</body>
+</html>
